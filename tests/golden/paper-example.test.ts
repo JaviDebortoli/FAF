@@ -11,8 +11,12 @@ import type { Candle } from '@/src/domain/types';
 //
 // Fixture derivation, including the necessary post-D5 deviation (MACD and
 // SMA now share sigma_omega since both windows are omega=50 — see
-// design.md's Deviation D5 addendum), is fully documented in
-// tests/fixtures/paper-example/README.md.
+// design.md's Deviation D5 addendum) and post-D6 (RSI's window widened to
+// its own independent omega=20, genuinely Wilder-smoothed — see design.md's
+// Deviation D6), is fully documented in tests/fixtures/paper-example/README.md.
+// D6 did NOT require changing any assertion below: RSI's own rho=0.40 target
+// remains independently achievable, so the paper's exact original
+// sigma-=0.475/gap=0.275 numbers are reproduced unchanged.
 
 describe('Golden #1 — runCycle end-to-end over the paper-example fixture', () => {
   it('reproduces lambda*(mu+)=<0.50,0.00>, sigma+=0.75, sigma-=0.475, gap=0.275 -> BUY (tol 1e-9)', () => {

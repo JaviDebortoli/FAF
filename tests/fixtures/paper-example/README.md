@@ -1,4 +1,4 @@
-# `paper-example` fixture — derivation (task 6.1)
+# `paper-example` fixture — derivation (task 6.1, re-derived for Deviation D6)
 
 `candles.json` holds 50 synthetic 1h `Candle`s for a single asset (`BTCUSDT`),
 engineered so that running them through the REAL pipeline
@@ -11,63 +11,69 @@ final numbers already proven algebra-only in `tests/golden/algebra-only.test.ts`
 OHLCV data, pushed through every layer's real formulas, lands on the exact
 same decision — not just the L3/L4 algebra in isolation.
 
-## Necessary deviation from the paper's literal e2/e3 rho values (new finding)
+## Necessary deviation from the paper's literal e2/e3 rho values (MACD/SMA, from D5)
 
 The paper's own §3 example uses evidence labels
 `e1=rsi_bullish<0.50,0.40>`, `e2=macd_bullish<0.80,0.10>`,
 `e3=sma_bearish<0.15,0.30>` — three DIFFERENT rho (risk) values. Reproducing
-those exact three rho values through the real pipeline is **no longer
-possible** after Deviation D5 (see `design.md` and `docs/PRD.md`): D5 widened
-`MACD_SPEC.omega` from 26 to 50, making it IDENTICAL to `SMA_SPEC.omega=50`.
-Both indicators now read from the exact same 50-candle window
-(`src/stream/window.ts#window` always returns the last `omega` candles, and
-with omega equal for both specs, both calls return the literal same close
-array). `computeSigmaOmega(closes)` is a pure function of that window's
-closes; identical input therefore ALWAYS produces identical `sigma_omega`,
-and hence identical `rho = computeRisk(sigma_omega)`, for MACD and SMA.
-Targeting `rho_macd=0.10` and `rho_sma=0.30` simultaneously is therefore
-architecturally unsatisfiable post-D5.
+the MACD and SMA rho values (`0.10`/`0.30`) exactly through the real pipeline
+is **not possible** after Deviation D5 (see `design.md` and `docs/PRD.md`):
+D5 widened `MACD_SPEC.omega` from 26 to 50, making it IDENTICAL to
+`SMA_SPEC.omega=50`. Both indicators now read from the exact same 50-candle
+window (`src/stream/window.ts#window` always returns the last `omega`
+candles, and with omega equal for both specs, both calls return the literal
+same close array). `computeSigmaOmega(closes)` is a pure function of that
+window's closes; identical input therefore ALWAYS produces identical
+`sigma_omega`, and hence identical `rho = computeRisk(sigma_omega)`, for
+MACD and SMA. Targeting `rho_macd=0.10` and `rho_sma=0.30` simultaneously is
+therefore architecturally unsatisfiable post-D5, independent of anything
+RSI-related.
 
-**Resolution (verified by direct algebra, then confirmed numerically —
-see "Verification" below):** pick a single shared value `rho_shared` for
-both MACD's and SMA's evidence, chosen so the FINAL decision numbers are
-byte-identical to the paper's, even though the individual e2/e3 rho values
-differ from the paper's literal 0.10/0.30 split. Recall:
+`design.md`'s Deviation D5 addendum proves that a single shared value
+`rho_shared=0.50` for both the MACD and SMA evidence reproduces the paper's
+exact final decision numbers, even though the individual e2/e3 rho values
+differ from the paper's literal 0.10/0.30 split. This fixture reuses that
+exact `rho_shared=0.50` target (equation 4 below) — it is unaffected by D6.
 
-- `lambda(mu+) = mean(e1, e2)` (RSI + MACD, both bullish supporters)
-- `lambda(mu-) = e3` (SMA alone, the only bearish supporter)
-- `lambda*(mu+) = ominus(lambda(mu+), lambda(mu-))`, clamped >= 0 per component
-- `lambda*(mu-) = ominus(lambda(mu-), lambda(mu+))`, clamped >= 0 per component
+## Deviation D6 — RSI now genuinely Wilder-smoothed over its own independent window
 
-With `e1.rho = 0.40` (RSI keeps its own independent 14-candle window, still
-free to hit the paper's 0.40 exactly) and `e2.rho = e3.rho = rho_shared`:
+Deviation D6 (see `design.md`'s "Deviation D6" section and `docs/PRD.md`)
+widens `RSI_SPEC.omega` from Cuadro 1's literal 14 to **20**, and makes the
+call site pass RSI's own period (`14`) EXPLICITLY to `computeRSI`, so
+Wilder's continuation-smoothing loop genuinely executes (`diffs.length=19 >
+period=14`, 5 real recursive steps) instead of silently collapsing to a
+single seed average. 20 (not 50, matching MACD_SPEC/SMA_SPEC) was chosen
+deliberately: sharing MACD/SMA's 50-candle window would make RSI's `rho`
+identical to theirs too (the same rho-collision problem D5's addendum
+already documents for MACD/SMA), forcing `ominus`'s rho component to
+`max(0, R-R)=0` whenever RSI/MACD-side evidence conflicts with SMA-side
+evidence, for ANY value of R — a structural deadening of the risk dimension
+of the paper's conflict operator (⊖), not just a fixture artifact. 20 keeps
+RSI's window numerically distinct from MACD/SMA's shared 50-candle window
+while still giving `computeRSI` enough closes for genuine continuation
+smoothing.
 
-```
-lambda(mu+).rho = mean(0.40, rho_shared) = (0.40 + rho_shared) / 2
-lambda(mu-).rho = rho_shared
-lambda*(mu+).rho = max(0, lambda(mu+).rho - rho_shared) = max(0, (0.40 - rho_shared) / 2)
-```
+**Key finding — the paper's ORIGINAL numbers are fully reproducible.**
+Because RSI's window (indices 30-49 of the 50-candle series, see below) is
+now genuinely independent in *identity* from MACD/SMA's shared window
+(`sigma_omega` computed over RSI's own last-20-candle slice, not the full
+50), RSI's own `rho` is free to hit the paper's literal `e1` target
+(`sigma_omega=0.008 -> rho=0.40`) SIMULTANEOUSLY with MACD/SMA's shared
+`rho_shared=0.50` (D5's addendum value) and RSI's own `gamma=0.50`. All 5
+target equations below were solved simultaneously to residuals ~`1e-14`, so
+**no golden-test assertion needed to change for D6** — `sigma-=0.475` and
+`gap=0.275` (the paper's exact original numbers) hold unmodified. This is
+a genuine improvement over D5's addendum, which DID force `sigma-`/`gap`
+off the paper's literal values; D6 fixes a real correctness bug (real
+Wilder smoothing) while fully preserving the paper's own worked example —
+this was checked FIRST, before assuming any golden-test deviation would be
+needed, per the task's instructions.
 
-For `lambda*(mu+).rho` to land on the paper's `0.00` (not a small positive
-residual), we need `rho_shared >= 0.40` (clamped at exactly 0 for any such
-value). Then:
-
-```
-lambda*(mu-).rho = max(0, rho_shared - lambda(mu+).rho) = (rho_shared - 0.40) / 2
-sigma- = 0.5*lambda*(mu-).gamma + 0.5*(1 - lambda*(mu-).rho)
-       = 0.5*0 + 0.5*(1 - (rho_shared - 0.40)/2)
-```
-
-Solving `sigma- = 0.475` (the paper's target): `(rho_shared - 0.40)/2 = 0.05`
-=> **`rho_shared = 0.50`**. Substituting back: `lambda(mu+).rho = 0.45`,
-`lambda*(mu+) = <0.50, 0.00>` (gamma side unaffected: `mean(0.50,0.80)=0.65`,
-`0.65-0.15=0.50` exactly as in the paper), `lambda*(mu-) = <0.00, 0.05>`,
-`sigma+ = 0.75`, `sigma- = 0.475`, `gap = 0.275` -> **BUY**. Every final
-number matches the paper's own Golden #2 output exactly, using
-`rho_shared = 0.50` for BOTH the MACD and SMA evidence instead of the
-paper's 0.10/0.30 split. This is registered in `design.md` as an addendum to
-Deviation D5 (the fixture-level consequence of the D5 window change) — see
-`design.md`'s Deviation D5 section for the design-level note.
+(An earlier, unmerged and never-committed attempt tried widening RSI's
+window to 50, mirroring D5 exactly. That attempt was rejected for the
+rho-collision reason above — see `design.md`'s Deviation D6 section — before
+this 20-candle re-derivation was produced. No trace of the 50-candle
+attempt remains in this fixture or its derivation.)
 
 ## Candle construction (how `candles.json` was actually built)
 
@@ -80,90 +86,117 @@ fixtures in this repo, e.g. `tests/golden/algebra-only.test.ts`). Only
 `open = previous close`, `high = max(open, close)`, `low = min(open, close)`,
 `volume = 1000` (a constant placeholder) for every candle.
 
-The 50 closes are built in two segments:
+The 50 closes are built in **two segments, split at the RSI window
+boundary** (a different split than the pre-D6 fixture, since RSI's own
+window is now 20 candles, not 14):
 
-1. **Indices 0-35 (36 candles)** — a smooth decline from `100` down to a
-   "window entry price" `Bstart`, in two phases: an initial FLAT run at
-   `100` for a fraction `s` of the segment (no price movement — keeps
-   EMA12/EMA26 anchored at exactly `100` for that many steps, since a
-   converged EMA fed an unchanged value is an exact fixed point), followed
-   by a power-law decline `price(t) = 100 + (Bstart-100)*t^p` for the
-   remaining fraction, `t` normalized to `[0,1]` over that portion.
-2. **Indices 36-49 (14 candles = the RSI window, `RSI_SPEC.omega=14`)** —
-   starts at `Bstart` (index 36, connecting with a zero diff from index 35),
-   then **12 consecutive down-candles** of size `Dn` each, then **1 sharp
-   up-candle** of size `U`.
+1. **Segment A — indices 0-29 (30 candles)**: drives `SMA_SPEC`/`MACD_SPEC`
+   (both still read the full 50-candle window) but is entirely EXCLUDED from
+   `RSI_SPEC`'s own last-20-candle window. Same shape as the pre-D6 fixture's
+   pre-window segment: an initial FLAT run at `100` for a fixed fraction
+   `s=0.55` of the segment (a converged EMA fed an unchanged value is an
+   exact fixed point, keeping EMA12/EMA26 anchored), followed by a power-law
+   decline `price(t) = 100 + (Bstart-100)*t^p` for the remaining fraction,
+   `t` normalized to `[0,1]` over that portion, ending exactly at `Bstart`
+   (index 29).
+2. **Segment B — indices 30-49 (20 candles = RSI's OWN window,
+   `RSI_SPEC.omega=20`)**: starts at an independent price `Rstart` (index
+   30; connects to segment A with a plain, unconstrained diff — the two
+   segments need not meet smoothly, since that boundary diff only feeds the
+   full-50-window equations, never RSI's own window), then **18 consecutive
+   down-candles** of size `Dn` each, then **1 sharp up-candle** of size `U`
+   (the most recent candle, index 49) — the same "many down, one up at the
+   end" shape as the pre-D6 fixture's RSI segment, just stretched from
+   13 diffs (14 candles) to 19 diffs (20 candles) to match the wider window
+   and genuinely exercise Wilder's continuation loop.
 
-The up/down COUNTS (12 down, 1 up) and the magnitude ratio
-`U = (36/17) * Dn` are chosen so `computeRSI`'s default period
-(`= closes.length - 1 = 13`, i.e. the whole window feeds one plain average,
-no Wilder smoothing recursion since `period === diffs.length`) gives
-`avgGain/avgLoss = (1*U) / (12*Dn) = 3/17` EXACTLY, for ANY `Dn > 0` — which
-is precisely the ratio that makes `RSI = 100 - 100/(1 + 3/17) = 15` exactly
-(paper Cuadro 2: `confidenceRsiBullish(15) = (30-15)/30 = 0.50`). Placing
-the lone up-candle at the very end (index 49, the most recent point) also
-maximizes its influence on EMA12 (period 12, the most recency-sensitive of
-the two MACD legs), which is what makes a net-declining 50-candle series
-still produce a POSITIVE (bullish) MACD histogram at the end — the paper's
-own example has RSI oversold (bearish-leaning short window) simultaneous
-with a bullish MACD cross AND a bearish SMA cross, i.e. genuinely
-conflicting evidence, which is the whole point of the argumentation
-framework's conflict resolution (`ominus`).
+Because `computeRSI`'s seed step (`period=14`) and continuation step
+(5 more iterations, `i=14..18`) are each a FIXED LINEAR functional of the
+`gains`/`losses` arrays (the recursive weights depend only on `period`, not
+on the diff values themselves), scaling every down-diff by `Dn` and the
+lone up-diff by `U` keeps `avgGain/avgLoss` — and therefore the final
+RSI value — **independent of the absolute scale of `Dn`/`U`**, only their
+*ratio* matters for RSI. This is the same scale-invariance trick the pre-D6
+fixture used for the simple-average case, generalized to genuine Wilder
+recursion: it lets the solver treat `Dn`/`U`'s ratio (which fixes RSI) and
+their absolute scale (which, combined with `Rstart`, fixes RSI's own
+`sigma_omega`) as separable-but-coupled unknowns, both handled together by
+the numeric solve below.
 
-## Solving for the 4 free parameters
+## Solving for the 5 free parameters
 
-Four unknowns — `Bstart` (window entry price), `Dn` (down-candle magnitude
-inside the RSI window), `p` (curvature of the pre-window decline), `s`
-(fraction of the pre-window segment that stays flat before the decline
-starts) — were solved against four target equations using a numeric
-multivariate Newton-Raphson solver (finite-difference Jacobian, backtracking
-line search) implemented against a byte-for-byte copy of this repo's own
-`computeRSI`/`computeMACD`/`computeSMA`/`computeSigmaOmega`/`confidence*`
-formulas (so the solved parameters are guaranteed consistent with the real
-`src/stream/*` implementation, not an approximation of it):
+Five unknowns — `Bstart` (segment A's ending price), `p` (curvature of
+segment A's decline), `Rstart` (segment B's starting price), `Dn` (segment
+B's down-candle magnitude), `U` (segment B's up-candle magnitude) — were
+solved against five target equations using a numeric Levenberg-Marquardt
+least-squares solver (finite-difference Jacobian, damped normal equations)
+implemented against the REAL repo functions
+(`computeRSI`, `computeMACD`, `computeSMA`, `computeSigmaOmega`,
+`confidenceSmaBearish`, imported directly from `src/stream/*`, not
+reimplemented or approximated). The flat fraction `s=0.55` (segment A) was
+held fixed to keep the system exactly determined (5 unknowns, 5 equations).
 
 | # | Target equation | Target value |
 |---|---|---|
 | 1 | `confidenceSmaBearish(SMA20, SMA50)` (over the full 50-candle window) | `0.15` |
-| 2 | `computeSigmaOmega(RSI window closes)` (the RSI window's OWN 14-candle sigma_omega) | `0.008` (=> `rho=0.40`) |
+| 2 | `computeRSI(segment B closes, 14)` — genuine Wilder RSI over RSI's OWN 20-candle window | `15` (=> `gamma=0.50`) |
 | 3 | `computeMACD(closes).histogram / computeMACD(closes).sigmaH` (over the full 50-candle window) | `0.80` |
-| 4 | `computeSigmaOmega(full 50-candle closes)` (shared MACD/SMA sigma_omega, per the deviation above) | `0.01` (=> `rho_shared=0.50`) |
+| 4 | `computeSigmaOmega(full 50-candle closes)` (shared MACD/SMA sigma_omega, per D5's addendum) | `0.01` (=> `rho_shared=0.50`) |
+| 5 | `computeSigmaOmega(segment B closes)` — RSI's OWN sigma_omega, over its independent 20-candle window | `0.008` (=> `rho=0.40`, the paper's literal `e1` value) |
 
-The solver converged to residuals on the order of `1e-15` (machine epsilon),
-far inside the golden test's `1e-9` tolerance:
+The solver converged to residuals on the order of `1e-14` (well inside the
+golden test's `1e-9` tolerance), confirming all 5 targets — including RSI's
+own `rho=0.40` — are simultaneously achievable now that RSI's window is
+genuinely independent of MACD/SMA's:
 
 ```
-Bstart = 76.27366344393879
-Dn     = 0.6693982737809604
-p      = 0.510412307286751
-s      = 0.5496924446627729
+Bstart = 77.84229791254002
+p      = 0.6439388285031873
+Rstart = 79.34893241706108
+Dn     = 0.7379541245650761
+U      = 1.692953579884584
 ```
 
 ## Verification (recomputed directly from `candles.json`)
 
 | Quantity | Value | Target |
 |---|---|---|
-| RSI (14-window) | `15.000000000000142` | `15` (=> gamma=0.50) |
-| sigma_omega (RSI's own 14-window) | `0.008000000000000054` | `0.008` (=> rho=0.40) |
-| MACD histogram/sigmaH ratio | `0.7999999999999966` | `0.80` (=> gamma=0.80) |
-| sigma_omega (shared 50-window, MACD & SMA) | `0.010000000000000113` | `0.01` (=> rho_shared=0.50) |
-| SMA20 | `73.94649513047383` | — |
-| SMA50 | `86.99587662408686` | SMA50 > SMA20 (bearish cross) |
-| confidenceSmaBearish(SMA20,SMA50) | `0.14999999999999997` | `0.15` (=> gamma=0.15) |
-| Bollinger band (last-20-window) | `lower=66.68, upper=81.22, lastClose=69.66` | strictly inside band — no bollinger evidence fires, matching the paper's 3-evidence-only example |
+| RSI (segment B, own 20-window, genuine Wilder period=14) | `14.999999999999972` | `15` (=> gamma=0.50) |
+| sigma_omega (RSI's own 20-window) | `0.008000000000000035` | `0.008` (=> rho=0.40) |
+| MACD histogram/sigmaH ratio (full 50-window) | `0.8000000000000141` | `0.80` (=> gamma=0.80) |
+| sigma_omega (shared 50-window, MACD & SMA) | `0.010000000000000004` | `0.01` (=> rho_shared=0.50) |
+| SMA20 (= mean of segment B) | `72.45991361891531` | — |
+| SMA50 (= mean of all 50 closes) | `85.24695719872393` | SMA50 > SMA20 (bearish cross) |
+| confidenceSmaBearish(SMA20,SMA50) | `0.1500000000000004` | `0.15` (=> gamma=0.15) |
+| Bollinger band (last-20-window, same slice as RSI's since `BOLLINGER_SPEC.omega=20` too) | last close (`67.76`) strictly inside `[lower, upper]` | no bollinger evidence fires, matching the paper's 3-evidence example |
 
-Resulting evidence set (via `extractEvidence`, matching the paper's e1/e2/e3):
+Resulting evidence set (via `extractEvidence`, matching the paper's e1/e2/e3
+**exactly**, including rho):
 
-- `rsi_bullish<0.50, 0.40>`
-- `macd_bullish<0.80, 0.50>` (rho differs from the paper's literal `0.10` — see deviation above)
-- `sma_bearish<0.15, 0.50>` (rho differs from the paper's literal `0.30` — see deviation above)
+- `rsi_bullish<0.50, 0.40>` — matches the paper's literal `e1` exactly
+- `macd_bullish<0.80, 0.50>` (rho differs from the paper's literal `0.10` —
+  D5's addendum, unrelated to and unaffected by D6)
+- `sma_bearish<0.15, 0.50>` (rho differs from the paper's literal `0.30` —
+  D5's addendum, unrelated to and unaffected by D6)
 
 Final decision (via `evaluateGraph` + `decide`), asserted by
-`tests/golden/paper-example.test.ts` at `1e-9` tolerance:
+`tests/golden/paper-example.test.ts` at `1e-9` tolerance — **byte-identical
+to the paper's own original numbers, unchanged from before D6**:
 
-- `lambda*(mu+) = <0.50, 0.00>`
-- `sigma+ = 0.75`, `sigma- = 0.475`, `gap = 0.275`
-- `recommendation = BUY`
+- `lambda(mu+) = mean(<0.50,0.40>, <0.80,0.50>) = <0.65, 0.45>`
+- `lambda(mu-) = <0.15, 0.50>`
+- `lambda*(mu+) = ominus(<0.65,0.45>, <0.15,0.50>) = <0.50, 0.00>`
+- `lambda*(mu-) = ominus(<0.15,0.50>, <0.65,0.45>) = <0.00, 0.05>`
+- `sigma+ = 0.75`, `sigma- = 0.475`, `gap = 0.275` -> **BUY**
 
 No bollinger evidence is emitted (price stays inside the bands), matching
 the paper's example, which only uses e1/e2/e3.
+
+## Solver implementation note
+
+The throwaway Levenberg-Marquardt solver script (`tests/_d6_solve.test.ts`,
+a temporary Vitest test importing the real repo functions via the `@/`
+alias so it could run under `npx vitest run` without any extra tooling) was
+deleted after use and is **not committed** — this file documents its method
+and results in full, per the task's requirement that the derivation be
+reproducible from this README alone.

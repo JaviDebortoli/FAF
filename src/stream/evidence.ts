@@ -19,7 +19,43 @@ import { computeSigmaOmega, computeRisk } from './risk';
 import { mintEventIri } from '@/src/rdf/ontology';
 
 /** Fixed window configurations (paper Cuadro 1: RSI 14/1, MACD 26/1, SMA 50/1, Bollinger 20/1). */
-const RSI_SPEC: WindowSpec = { indicator: 'RSI', omega: 14, beta: 1 };
+/**
+ * DEVIATION D6 (see design.md / docs/PRD.md "Desvíos aprobados"): Cuadro 1
+ * literally declares RSI's window as omega=14 candles, exactly matching
+ * RSI's own defining period. At `closes.length=14`, `computeRSI` builds
+ * `diffs.length=13` differences; when the caller omits `period` (the old
+ * call below did), it defaults to `diffs.length=13`, so the continuation
+ * loop `for (i = period; i < diffs.length; i++)` never runs (`13 < 13` is
+ * false) — the system always emitted the SEED step's plain average, never
+ * Wilder's (1978) genuine recursive smoothing that `rsi.ts` itself cites.
+ * Fix: (a) widen the RSP-QL window RANGE this call draws from to 20
+ * candles, and (b) pass RSI's own Cuadro-1 period (14) EXPLICITLY to
+ * `computeRSI`, so `diffs.length=19 > period=14` and the continuation loop
+ * genuinely executes (i=14..18, 5 real recursive steps beyond the seed).
+ *
+ * Why 20, not 50 (matching MACD_SPEC/SMA_SPEC below, D5's window size):
+ * 50 was tried first and rejected. If RSI_SPEC.omega equalled MACD_SPEC's
+ * and SMA_SPEC's (both 50), `window()` would return the IDENTICAL last-50-
+ * candle close array for all three indicators every cycle, and
+ * `computeSigmaOmega(closes)` is a pure function of that array — so RSI,
+ * MACD, and SMA evidence would ALWAYS carry the exact same `rho`, for any
+ * real market data, not just this fixture. Because `ominus`'s rho
+ * component is `max(0, rho_a - rho_b)`, whenever a bullish-side supporter
+ * and the opposing bearish-side supporter share one `rho` value R,
+ * `oplus` averages R with (possibly another shared-R value) still landing
+ * at R on one side and exactly R on the other, so the losing thesis's net
+ * rho is FORCED to exactly 0 — structurally deadening the risk dimension
+ * of the paper's conflict-resolution operator (⊖) in any cycle where
+ * RSI/MACD evidence conflicts with SMA evidence. 20 is large enough for
+ * `computeRSI(closes, 14)` to get genuine continuation smoothing (19
+ * diffs > 14-candle seed, 5 real recursive steps) while staying
+ * numerically distinct from MACD's/SMA's shared 50-candle window, so
+ * RSI's `sigma_omega`/`rho` differs from MACD/SMA's in the general case,
+ * preserving real risk differentiation in `ominus`. 20 also reuses
+ * `BOLLINGER_SPEC`'s existing Cuadro-1 window size rather than introducing
+ * a brand-new distinct number into the system.
+ */
+const RSI_SPEC: WindowSpec = { indicator: 'RSI', omega: 20, beta: 1 };
 /**
  * DEVIATION D5 (see design.md / docs/PRD.md "Desvíos aprobados"): Cuadro 1
  * literally declares MACD's window as omega=26 candles ("26 velas (período
@@ -93,7 +129,7 @@ export function extractEvidence(store: Store, asset: Asset, now: Millis): Eviden
 
   const rsiWindow = window(store, asset, now, RSI_SPEC);
   if (rsiWindow.sufficientHistory) {
-    const rsi = computeRSI(rsiWindow.closes);
+    const rsi = computeRSI(rsiWindow.closes, 14);
     const sigmaOmega = computeSigmaOmega(rsiWindow.closes);
     const rho = computeRisk(sigmaOmega);
     const iri = mintIndicatorIri(asset, 'rsi', now);
