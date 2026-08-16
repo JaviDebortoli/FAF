@@ -12,9 +12,9 @@ dag:
   design: done
   tasks: done
   apply: done (PR1, PR2, PR3 all implemented and committed)
-  verify: pending
+  verify: done (PASS WITH WARNINGS - 0 CRITICAL, 4 WARNING, 1 SUGGESTION)
   archive: pending
-next_recommended: sdd-verify
+next_recommended: sdd-archive (whenever the user is ready to close the change)
 pr1:
   branch: faf-platform/pr1-core-algebra
   status: committed (a4e31ac docs, f3c9c6c feat), independently verified (31/31 tests, tsc clean)
