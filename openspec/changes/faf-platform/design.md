@@ -152,6 +152,8 @@ sequenceDiagram
 
 **Verification**: `tests/stream/evidence.test.ts` (`describe('DEVIATION D5 ...')`) proves both directions — `macd_bullish`/`macd_bearish` can now activate with `histogram !== 0`, `sigma_H > 0`, and real (0,1] confidence, and `sufficientHistory` is correctly `false` for 26–49 candles (MACD's own cold-start floor moved from 26 to 50 along with the window).
 
+**Addendum (discovered while deriving the task 6.1 Golden #1 fixture)**: because `MACD_SPEC.omega` now equals `SMA_SPEC.omega` (both 50), `window()` returns the IDENTICAL last-50-candle close array for both indicators whenever `evidence.ts` evaluates them in the same cycle. `computeSigmaOmega(closes)` is a pure function of that array, so **MACD's and SMA's evidence `rho` are now always numerically identical** for any single cycle — reproducing the paper's own §3 example values `macd_bullish<0.80,0.10>` and `sma_bearish<0.15,0.30>` (different rho) simultaneously through the real pipeline is therefore architecturally impossible post-D5. `tests/fixtures/paper-example/README.md` derives and verifies a replacement: use a single shared `rho=0.50` for both the MACD and SMA evidence instead of the paper's 0.10/0.30 split. This is algebraically proven (and numerically confirmed to `1e-15`) to still reproduce the paper's exact final decision output (`lambda*(mu+)=<0.50,0.00>`, `sigma+=0.75`, `sigma-=0.475`, `gap=0.275` → BUY) — only the two individual evidence labels differ from the paper's literal numbers, not the decision the framework reaches. No further code change is required; this is a fixture-derivation consequence of D5, not a new implementation bug.
+
 ## Type Contracts
 
 ```ts
