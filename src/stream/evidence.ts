@@ -20,7 +20,28 @@ import { mintEventIri } from '@/src/rdf/ontology';
 
 /** Fixed window configurations (paper Cuadro 1: RSI 14/1, MACD 26/1, SMA 50/1, Bollinger 20/1). */
 const RSI_SPEC: WindowSpec = { indicator: 'RSI', omega: 14, beta: 1 };
-const MACD_SPEC: WindowSpec = { indicator: 'MACD', omega: 26, beta: 1 };
+/**
+ * DEVIATION D5 (see design.md / docs/PRD.md "Desvíos aprobados"): Cuadro 1
+ * literally declares MACD's window as omega=26 candles ("26 velas (período
+ * lento)"). At exactly 26 candles, `computeEMASeries(closes, 26)` only ever
+ * produces its SEED value — the recursive step `for (i = period; i <
+ * values.length; i++)` needs `values.length > period`, and 26 is not > 26 —
+ * so the slow-EMA series (and therefore the MACD-line series derived from
+ * it) has length 1. With a single-point series, `effectiveSignalPeriod =
+ * min(9, 1) = 1`, the signal EMA degenerates to that same point, histogram
+ * = macdLine - signal = 0, and sigma_H = populationStdDev([one value]) = 0
+ * — ALWAYS, independent of real market data. `evidence.ts`'s activation
+ * check (`histogram > 0` / `histogram < 0`) can therefore never fire, so
+ * macd_bullish/macd_bearish (rules R2/R6) would be permanently silent at
+ * runtime. Fix: widen the RSP-QL window RANGE this call draws from to 50
+ * candles — matching the system's uniform per-cycle kline fetch (already
+ * required by SMA's own Cuadro-1 window of 50) — so the EMA(26)/EMA(9)
+ * chain inside `computeMACD` has enough history to produce a non-degenerate
+ * multi-point series. `computeMACD`'s own fast/slow/signal periods
+ * (12/26/9) are UNCHANGED and still match Cuadro 1's indicator formula
+ * exactly; only the caller's window size changed.
+ */
+const MACD_SPEC: WindowSpec = { indicator: 'MACD', omega: 50, beta: 1 };
 const SMA_SPEC: WindowSpec = { indicator: 'SMA', omega: 50, beta: 1 };
 const BOLLINGER_SPEC: WindowSpec = { indicator: 'BOLLINGER', omega: 20, beta: 1 };
 

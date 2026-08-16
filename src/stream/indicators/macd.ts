@@ -11,15 +11,20 @@
  * the population standard deviation of the MACD-line series computed
  * within this call's window.
  *
- * NOTE (see apply-progress Deviations): Cuadro 1's omega=26 exactly
- * matches the default slowPeriod, so the MACD-line series computed from a
- * single window degenerates to ONE point (EMA(slow) only becomes
- * available at the very last candle of a 26-candle window) — at FAF's
- * actual runtime window size, histogram and sigma_H are therefore always
- * 0. This function implements the general, multi-point-correct algorithm
- * (verified above with longer synthetic series) so it degrades gracefully
- * rather than throwing, and stays correct if a future revision widens the
- * MACD window.
+ * RESOLVED by DEVIATION D5 (see design.md / docs/PRD.md "Desvíos
+ * aprobados"): Cuadro 1's literal omega=26 exactly matches the default
+ * slowPeriod, so a MACD-line series computed from a bare 26-candle window
+ * degenerates to ONE point (EMA(slow) only becomes available at the very
+ * last candle of a 26-candle window), making histogram and sigma_H always
+ * 0 and the indicator permanently silent. The caller (`src/stream/
+ * evidence.ts`'s `MACD_SPEC`) now supplies up to 50 closes — matching the
+ * system's uniform per-cycle kline fetch — giving the EMA(26)/EMA(9) chain
+ * enough history to converge to a non-degenerate, multi-point series. This
+ * function's own `slowPeriod`/`fastPeriod`/`signalPeriod` parameters
+ * (12/26/9, matching Cuadro 1's indicator formula) are UNCHANGED — only the
+ * caller's window size changed. This function still implements the
+ * general, multi-point-correct algorithm and degrades gracefully (rather
+ * than throwing) for any window size >= slowPeriod.
  */
 
 function computeEMASeries(values: number[], period: number): number[] {

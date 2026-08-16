@@ -42,11 +42,17 @@ describe('extractEvidence (R2S operator)', () => {
     expect(evidences).toEqual([]);
   });
 
-  it('emits rsi_bullish (deep oversold) and sma_bearish (structural downtrend) for a 60-candle decline; no macd/bollinger fire', () => {
-    // 60 strictly decreasing closes: 200, 199, ..., 141 (i=0..59, close=200-i)
+  it('emits rsi_bullish (deep oversold), sma_bearish (structural downtrend) and macd_bearish (D5) for a 60-candle accelerating decline', () => {
+    // 60 candles: strictly decreasing, decrement -1/candle for i<30 then
+    // -1.5/candle for i>=30 (accelerating downtrend, avoids the perfectly
+    // LINEAR decline's MACD histogram converging to a floating-point-noise
+    // "0" — see D5 below). Still strictly monotonic decreasing throughout,
+    // so RSI's all-losses behavior is unaffected by the acceleration.
     const store = new Store();
+    let price = 200;
     for (let i = 0; i < 60; i++) {
-      addPriceEvent(store, 'BTCUSDT', i * HOUR, 200 - i);
+      addPriceEvent(store, 'BTCUSDT', i * HOUR, price);
+      price -= i < 30 ? 1 : 1.5;
     }
     const now = 59 * HOUR;
 
@@ -56,12 +62,16 @@ describe('extractEvidence (R2S operator)', () => {
     // RSI: all-losses in every sub-window -> RSI=0 -> rsi_bullish (oversold reversal signal)
     // SMA: SMA20 (mean of the 20 most recent/lowest closes) < SMA50 (mean of all 50,
     //   including older/higher closes) in a monotonic decline -> sma_bearish
-    // MACD: omega=26 exactly equals the default slowPeriod -> degenerate single-point
-    //   series -> histogram always 0 -> neither macd_bullish nor macd_bearish fires
-    //   (documented finding, see apply-progress Deviations)
-    // Bollinger: last close (141) sits between the computed +-2sigma bands of the
-    //   trailing 20 closes (142..160) -> neither bollinger_bullish nor bollinger_bearish fires
-    expect(predicates).toEqual(['rsi_bullish', 'sma_bearish']);
+    // MACD (DEVIATION D5, see design.md / docs/PRD.md): omega widened from the
+    //   paper's literal 26 to 50 so the EMA(26)/EMA(9) chain has enough history
+    //   to converge to a non-degenerate, multi-point series. The recent-half
+    //   acceleration in the decline gives a genuinely negative histogram (fast
+    //   EMA falling away from slow EMA faster than the signal line can track)
+    //   -> macd_bearish fires with real confidence (sigma_H > 0).
+    // Bollinger: window is unaffected by D5 (still omega=20); last close sits
+    //   within the +-2sigma bands of the trailing 20 closes -> neither
+    //   bollinger_bullish nor bollinger_bearish fires.
+    expect(predicates).toEqual(['macd_bearish', 'rsi_bullish', 'sma_bearish']);
 
     const rsiEvidence = evidences.find((e) => e.predicate === 'rsi_bullish')!;
     expect(rsiEvidence.label.gamma).toBeCloseTo(1, 9); // RSI=0 -> (30-0)/30=1
@@ -76,6 +86,13 @@ describe('extractEvidence (R2S operator)', () => {
     expect(smaEvidence.label.gamma).toBeGreaterThan(0);
     expect(smaEvidence.label.gamma).toBeLessThanOrEqual(1);
     expect(smaEvidence.provenance.priceEventIris).toHaveLength(50);
+
+    const macdEvidence = evidences.find((e) => e.predicate === 'macd_bearish')!;
+    expect(macdEvidence.window).toEqual({ indicator: 'MACD', omega: 50, beta: 1 });
+    expect(macdEvidence.provenance.priceEventIris).toHaveLength(50);
+    expect(macdEvidence.provenance.rawValue).toBeLessThan(0); // histogram < 0
+    expect(macdEvidence.label.gamma).toBeGreaterThan(0);
+    expect(macdEvidence.label.gamma).toBeLessThanOrEqual(1);
   });
 
   it('auto-retracts rsi_bullish (no explicit signal) once RSI returns to the neutral 30-70 range', () => {
@@ -96,5 +113,52 @@ describe('extractEvidence (R2S operator)', () => {
 
     expect(beforePredicates).toContain('rsi_bullish');
     expect(afterPredicates.some((p) => p.startsWith('rsi_'))).toBe(false);
+  });
+
+  describe('DEVIATION D5 — MACD window widened from Cuadro-1 omega=26 to 50', () => {
+    it('activates macd_bullish (histogram > 0, sigma_H > 0, real confidence) for a 50-candle accelerating rise', () => {
+      // Mirrors the accelerating-decline fixture above but rising, and only
+      // 50 candles (the minimum MACD now requires) so this test also proves
+      // the fix in isolation from RSI/SMA/Bollinger's own activations.
+      const store = new Store();
+      let price = 100;
+      for (let i = 0; i < 50; i++) {
+        addPriceEvent(store, 'BTCUSDT', i * HOUR, price);
+        price += i < 25 ? 1 : 1.5;
+      }
+      const now = 49 * HOUR;
+
+      const evidences = extractEvidence(store, 'BTCUSDT', now);
+      const macdEvidence = evidences.find((e) => e.predicate === 'macd_bullish');
+
+      expect(macdEvidence).toBeDefined();
+      expect(macdEvidence!.provenance.rawValue).toBeGreaterThan(0); // histogram > 0
+      expect(macdEvidence!.provenance.sigmaOmega).toBeGreaterThanOrEqual(0);
+      expect(macdEvidence!.label.gamma).toBeGreaterThan(0);
+      expect(macdEvidence!.label.gamma).toBeLessThanOrEqual(1);
+      expect(evidences.some((e) => e.predicate === 'macd_bearish')).toBe(false);
+
+      // Before D5 (omega=26) this same fixture's window() call would already
+      // have had sufficientHistory=true at 26 candles, but computeMACD would
+      // degenerate to a single-point series (histogram/sigma_H always 0) —
+      // the confidence formula's sigma_H===0 guard would force gamma=0 and
+      // the indicator would never actually reach this activation branch with
+      // a non-zero, meaningful histogram. This assertion is the fix's proof.
+      expect(macdEvidence!.provenance.rawValue).not.toBe(0);
+    });
+
+    it('requires 50 candles for MACD specifically (sufficientHistory=false with only 26-49) even though the pre-D5 Cuadro-1 value (26) would have been "enough"', () => {
+      const store = new Store();
+      for (let i = 0; i < 40; i++) {
+        addPriceEvent(store, 'BTCUSDT', i * HOUR, 100 + i);
+      }
+
+      // 40 candles: >= RSI's 14 and Bollinger's 20, but < MACD's (and SMA's) 50.
+      const evidences = extractEvidence(store, 'BTCUSDT', 39 * HOUR);
+      const predicates = evidences.map((e) => e.predicate);
+
+      expect(predicates.some((p) => p.startsWith('macd_'))).toBe(false);
+      expect(predicates.some((p) => p.startsWith('sma_'))).toBe(false);
+    });
   });
 });

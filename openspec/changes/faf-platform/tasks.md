@@ -71,6 +71,7 @@ Alternative coarser 3-slice split (user example): (a) L3+L4 "core algebra" = Uni
 - [x] 3.8 GREEN `src/stream/indicators/sma.ts`, `bollinger.ts`.
 - [x] 3.9 RED `tests/stream/window.test.ts`: W(S,ω,β) per Cuadro1 in 1h-candle units (RSI 14/1, MACD 26/1, SMA 50/1, Bollinger 20/1); injected clock; content size=ω; cold start (<50 candles)→[]; §5 edge-effect documented as observed behavior.
 - [x] 3.10 GREEN `src/stream/window.ts` (S2R operator over quad stream; fixtures use hand-built N3 Store, no L1 dependency).
+  - **Post-hoc correction (bug fix, post-PR2)**: `src/stream/evidence.ts`'s `MACD_SPEC.omega` was corrected from the Cuadro-1 literal 26 to 50 — at omega=26 the MACD-line series degenerates to a single point, making histogram/sigma_H always 0 and macd_bullish/macd_bearish permanently unreachable. Documented as **deviation D5**; see `design.md`'s "Deviation D5" section and `docs/PRD.md`'s "Desvíos aprobados" table.
 - [x] 3.11 RED `tests/stream/evidence.test.ts`: R2S — active conditions→Evidence[] (0..8), non-monotonic auto-stop, provenance populated.
 - [x] 3.12 GREEN `src/stream/evidence.ts`: `extractEvidence(store, asset, now): Evidence[]` composing window+indicators+confidence+risk.
 

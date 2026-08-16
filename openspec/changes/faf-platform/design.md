@@ -140,6 +140,18 @@ sequenceDiagram
 | n8n workflow | Schedule Trigger → HTTP Request (klines, one per asset, `limit=50`) → Aggregate → HTTP Request `POST /api/cycle` (+ shared-secret header) | Code nodes doing RDF | Keeps n8n at cron+fetch (D2); no untestable logic in n8n. |
 | Deployment | Vercel, `runtime='nodejs'`, `dynamic='force-dynamic'`, `maxDuration=60` | long-lived Node process | Compute is trivial (O(50) per indicator, microseconds); wall clock is network-bound — N assets fetched in parallel (concurrency cap 5) ≈ 1–2 s for N ≤ 10. Comfortably inside the limit and the 1-min cadence. Beyond N=10, stagger assets across cycles (rollback ladder step 1). |
 
+### Deviation D5 (post-hoc, discovered in PR2 review): MACD's RSP-QL window widened from Cuadro 1's literal 26 to 50
+
+**What Cuadro 1 says**: MACD's window is "26 velas (período lento)" — `omega=26`, `beta=1`, matching the indicator's own `slowPeriod=26`.
+
+**What the code does now**: `src/stream/evidence.ts`'s `MACD_SPEC` uses `omega=50` (same window range as `SMA_SPEC`, the system's already-established uniform per-cycle kline fetch size). `computeMACD`'s own `fastPeriod=12`/`slowPeriod=26`/`signalPeriod=9` — the indicator formula Cuadro 1 actually defines — are **unchanged**; only the RSP-QL window RANGE the caller draws candles from changed.
+
+**Why (the bug this fixes)**: `window()` (S2R operator) hands `computeMACD` exactly `omega` closes. At the literal `omega=26`, `computeEMASeries(closes, 26)`'s recursive step (`for (i = period; i < values.length; i++)`) never executes because `26 < 26` is false — the slow-EMA series has length 1 (just its seed). The MACD-line series derived from it therefore also has length 1, so `effectiveSignalPeriod = min(9, 1) = 1`, the signal EMA over that single point equals the point itself, `histogram = macdLine - signal = 0`, and `sigma_H = populationStdDev([one value]) = 0` — **always**, independent of real market data. `src/stream/confidence.ts`'s `sigma_H===0` guard correctly avoids a `NaN` (returns confidence 0), but `src/stream/evidence.ts`'s activation check (`histogram > 0` / `histogram < 0`) can then never be true, so `macd_bullish`/`macd_bearish` (rules R2/R6) were permanently unreachable at runtime — a silent, structural bug rather than a documented indicator-inactive edge case.
+
+**Why 50 (not, say, 27)**: 50 matches the window range the system already fetches uniformly per cycle (SMA's own Cuadro-1 window is 50, the largest of the four indicators — n8n/Binance already pull `limit=50` klines per asset). Reusing that existing size avoids introducing a fifth distinct window range and gives the EMA(26)/EMA(9) chain 24 extra candles of history, enough for the slow-EMA and signal-EMA recursive steps to actually run and produce a non-degenerate, multi-point series.
+
+**Verification**: `tests/stream/evidence.test.ts` (`describe('DEVIATION D5 ...')`) proves both directions — `macd_bullish`/`macd_bearish` can now activate with `histogram !== 0`, `sigma_H > 0`, and real (0,1] confidence, and `sufficientHistory` is correctly `false` for 26–49 candles (MACD's own cold-start floor moved from 26 to 50 along with the window).
+
 ## Type Contracts
 
 ```ts
