@@ -34,3 +34,4 @@ coverage/
 
 # local agent tooling state (machine-specific paths, not project source)
 .atl/
+.codegraph/

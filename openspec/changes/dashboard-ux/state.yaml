@@ -1,0 +1,36 @@
+change: dashboard-ux
+created: 2026-08-16
+preflight:
+  pace: interactive
+  artifact_store: hybrid
+  delivery_strategy: ask-on-risk
+  review_budget_lines: 800
+dag:
+  explore: done
+  proposal: done (all 5 question-round items resolved by user; Tier 1 scoped to BUY/SELL-only cards per explicit user override)
+  specs: done (decision-dashboard modified, decision-narrative added — 22 scenarios)
+  design: done (component architecture, narrative endpoint contract, SVG graph layout, threat-matrix addendum, Tailwind v4 setup, deviation D7 formalized)
+  tasks: done (55 tasks, 6 phases/6 work units, ~2900-3200 lines forecast)
+  apply: pending
+  verify: pending
+  archive: pending
+next_recommended: sdd-apply (PR1a: Tailwind v4 + Tier 1 pure lib)
+delivery:
+  strategy: ask-on-risk
+  chain_strategy: stacked-to-main
+  chain_note: "each PR branch deleted immediately on merge so GitHub auto-retargets the next PR's base to main — faf-platform's chain hit a real bug where 2 of 3 PRs merged into their stacked base branch instead of main because the base branches were never deleted; this time the delete-on-merge step is mandatory, not optional"
+  pr_split: 6 (1a Tailwind+pure lib ~400 lines, 1b Tier1 UI ~600-650 lines, 2a narrative-core ~390 lines, 2b narrative route+docs ~495 lines, 3 Tier2 UI ~570 lines, 4 e2e rewrite ~500 lines)
+review_workload_forecast:
+  estimated_total_lines: 2900-3200
+  budget_risk_total: High
+  budget_risk_per_unit: Low-Medium (all 6 units individually under 800 lines)
+  chained_prs_recommended: true
+deviations:
+  D7: {status: approved, summary: "LLM narrative + fixed-topology argumentation graph now allowed, but ONLY inside the Tier 2 per-asset drill-down; Tier 1 overview stays fully within original D3 boundary (deterministic, no LLM text, no graph)", reason: "v1 dashboard was undeployable (zero CSS, raw tables); explainability via narrative+graph is the thesis's central claim and the data already exists in DecisionReport; D3's blanket ban is narrowed, not reversed"}
+signoff: {D7: approved}
+scope_note: "Tier 1 renders a card ONLY for assets with an active BUY or SELL recommendation (user's explicit override of the exploration's original 'always show all 3 assets' framing) — NO_RECOMMENDATION assets get no card; an all-NO_RECOMMENDATION state shows an explicit empty-state message"
+params:
+  llm_model: claude-opus-5
+  llm_config: "thinking: {type: adaptive}, streamed text/plain response"
+  narrative_language: Spanish
+  narrative_disclaimer: "visible 'generado por IA' label, required per user decision (thesis committee framing)"
