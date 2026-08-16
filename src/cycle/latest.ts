@@ -12,6 +12,16 @@ import type { Asset, Decision, DecisionReport, Millis } from '@/src/domain/types
  * reasoning state between cycles" still holds, since this cache is never
  * read by the reasoning core (L1-L4), only by the presentation read path
  * (`GET /api/decisions`).
+ *
+ * IMPORTANT — this is a plain in-memory module variable, so it is only
+ * actually shared between `POST /api/cycle` and `GET /api/decisions` when
+ * both run inside the *same* Node.js process with the *same* loaded module
+ * instance. That is NOT reliably true even in this project's own stated
+ * production deployment (Vercel serverless): the two routes commonly execute
+ * as separate function instances there too, not only in local Next.js dev
+ * mode. See design.md's "Cache sharing in the stated Vercel deployment"
+ * note — this is a latency/API-call-cost consequence, not a correctness
+ * issue (a cache miss always recomputes a byte-identical report).
  */
 interface CacheEntry {
   report: DecisionReport;

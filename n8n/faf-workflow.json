@@ -25,7 +25,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [220, 140],
-      "notes": "Raw fetch only (D2) - one HTTP Request node per allowlisted asset (src/market/assets.ts), limit=50 to match the system's uniform per-cycle window (see design.md 'Why 50').",
+      "notes": "Raw fetch only (D2) - one HTTP Request node per allowlisted asset (src/market/assets.ts), limit=50 to match the system's uniform per-cycle window (see design.md 'Why 50'). Feeds into a per-branch Set node (below) that hardcodes this branch's symbol, so the Aggregate node never has to infer it from item order.",
       "parameters": {
         "method": "GET",
         "url": "https://api.binance.com/api/v3/klines",
@@ -46,7 +46,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [220, 300],
-      "notes": "Raw fetch only (D2) - one HTTP Request node per allowlisted asset (src/market/assets.ts), limit=50 to match the system's uniform per-cycle window (see design.md 'Why 50').",
+      "notes": "Raw fetch only (D2) - one HTTP Request node per allowlisted asset (src/market/assets.ts), limit=50 to match the system's uniform per-cycle window (see design.md 'Why 50'). Feeds into a per-branch Set node (below) that hardcodes this branch's symbol, so the Aggregate node never has to infer it from item order.",
       "parameters": {
         "method": "GET",
         "url": "https://api.binance.com/api/v3/klines",
@@ -67,7 +67,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [220, 460],
-      "notes": "Raw fetch only (D2) - one HTTP Request node per allowlisted asset (src/market/assets.ts), limit=50 to match the system's uniform per-cycle window (see design.md 'Why 50').",
+      "notes": "Raw fetch only (D2) - one HTTP Request node per allowlisted asset (src/market/assets.ts), limit=50 to match the system's uniform per-cycle window (see design.md 'Why 50'). Feeds into a per-branch Set node (below) that hardcodes this branch's symbol, so the Aggregate node never has to infer it from item order.",
       "parameters": {
         "method": "GET",
         "url": "https://api.binance.com/api/v3/klines",
@@ -83,15 +83,96 @@
       }
     },
     {
+      "id": "set-symbol-btc",
+      "name": "Set Symbol - BTCUSDT",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [350, 140],
+      "notes": "Attaches this branch's literal symbol plus the raw klines array under a stable 'klines' field, so the Aggregate Code node downstream never needs to infer the asset from item order (fixes the previous SYMBOLS[i] positional fragility).",
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-symbol-btc-field",
+              "name": "symbol",
+              "value": "BTCUSDT",
+              "type": "string"
+            },
+            {
+              "id": "set-klines-btc-field",
+              "name": "klines",
+              "value": "={{ $json.body ?? $json }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "set-symbol-eth",
+      "name": "Set Symbol - ETHUSDT",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [350, 300],
+      "notes": "Attaches this branch's literal symbol plus the raw klines array under a stable 'klines' field, so the Aggregate Code node downstream never needs to infer the asset from item order (fixes the previous SYMBOLS[i] positional fragility).",
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-symbol-eth-field",
+              "name": "symbol",
+              "value": "ETHUSDT",
+              "type": "string"
+            },
+            {
+              "id": "set-klines-eth-field",
+              "name": "klines",
+              "value": "={{ $json.body ?? $json }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "set-symbol-sol",
+      "name": "Set Symbol - SOLUSDT",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [350, 460],
+      "notes": "Attaches this branch's literal symbol plus the raw klines array under a stable 'klines' field, so the Aggregate Code node downstream never needs to infer the asset from item order (fixes the previous SYMBOLS[i] positional fragility).",
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-symbol-sol-field",
+              "name": "symbol",
+              "value": "SOLUSDT",
+              "type": "string"
+            },
+            {
+              "id": "set-klines-sol-field",
+              "name": "klines",
+              "value": "={{ $json.body ?? $json }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
       "id": "aggregate-payload",
       "name": "Aggregate (build /api/cycle payload)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 300],
-      "notes": "Only reshapes raw Binance kline arrays [openTime,open,high,low,close,volume,...] into the Candle[] shape app/api/cycle/route.ts expects ({symbol, klines:[{openTime,open,high,low,close,volume}]}). No RDF, no indicator math, no decision logic here - all of that stays server-side (D2).",
+      "position": [610, 300],
+      "notes": "Only reshapes raw Binance kline arrays [openTime,open,high,low,close,volume,...] into the Candle[] shape app/api/cycle/route.ts expects ({symbol, klines:[{openTime,open,high,low,close,volume}]}). No RDF, no indicator math, no decision logic here - all of that stays server-side (D2). Reads item.json.symbol/item.json.klines directly, both hardcoded/attached by the per-branch Set node upstream - no positional item-order inference.",
       "parameters": {
         "language": "javaScript",
-        "jsCode": "// Each incoming item carries one asset's raw Binance klines response\n// (array of [openTime, open, high, low, close, volume, closeTime, ...]).\n// item.json.symbol must be set upstream per branch (see 'symbol' below,\n// derived from the originating HTTP Request node's query parameter).\nconst SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];\n\nfunction toCandle(row) {\n  return {\n    openTime: Number(row[0]),\n    open: Number(row[1]),\n    high: Number(row[2]),\n    low: Number(row[3]),\n    close: Number(row[4]),\n    volume: Number(row[5]),\n  };\n}\n\nconst assets = items.map((item, i) => ({\n  symbol: SYMBOLS[i] ?? item.json.symbol,\n  klines: (Array.isArray(item.json) ? item.json : item.json.body ?? []).map(toCandle),\n}));\n\nreturn [{ json: { assets } }];"
+        "jsCode": "// Each incoming item carries one asset's symbol + raw Binance klines\n// response (array of [openTime, open, high, low, close, volume, closeTime, ...]),\n// both attached explicitly by the per-branch 'Set Symbol - {SYMBOL}' node\n// upstream. No positional (item-order) inference is used here.\n\nfunction toCandle(row) {\n  return {\n    openTime: Number(row[0]),\n    open: Number(row[1]),\n    high: Number(row[2]),\n    low: Number(row[3]),\n    close: Number(row[4]),\n    volume: Number(row[5]),\n  };\n}\n\nconst assets = items.map((item) => ({\n  symbol: item.json.symbol,\n  klines: item.json.klines.map(toCandle),\n}));\n\nreturn [{ json: { assets } }];"
       }
     },
     {
@@ -99,7 +180,7 @@
       "name": "POST /api/cycle",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [740, 300],
+      "position": [870, 300],
       "notes": "T-2 (design.md Threat Matrix): shared-secret header must match FAF_CYCLE_SHARED_SECRET (see .env.example) configured on the app deployment. Store the secret in an n8n credential/environment variable, never hardcoded in the workflow JSON.",
       "parameters": {
         "method": "POST",
@@ -129,12 +210,21 @@
       ]
     },
     "Fetch Klines - BTCUSDT": {
-      "main": [[{ "node": "Aggregate (build /api/cycle payload)", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Set Symbol - BTCUSDT", "type": "main", "index": 0 }]]
     },
     "Fetch Klines - ETHUSDT": {
-      "main": [[{ "node": "Aggregate (build /api/cycle payload)", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Set Symbol - ETHUSDT", "type": "main", "index": 0 }]]
     },
     "Fetch Klines - SOLUSDT": {
+      "main": [[{ "node": "Set Symbol - SOLUSDT", "type": "main", "index": 0 }]]
+    },
+    "Set Symbol - BTCUSDT": {
+      "main": [[{ "node": "Aggregate (build /api/cycle payload)", "type": "main", "index": 0 }]]
+    },
+    "Set Symbol - ETHUSDT": {
+      "main": [[{ "node": "Aggregate (build /api/cycle payload)", "type": "main", "index": 0 }]]
+    },
+    "Set Symbol - SOLUSDT": {
       "main": [[{ "node": "Aggregate (build /api/cycle payload)", "type": "main", "index": 0 }]]
     },
     "Aggregate (build /api/cycle payload)": {

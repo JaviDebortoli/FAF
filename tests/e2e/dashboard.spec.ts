@@ -61,3 +61,92 @@ test.describe('Dashboard smoke test', () => {
     await expect(row).toContainText('BUY');
   });
 });
+
+/**
+ * Two-asset fixture for the asset-filter and argument-trace tests below.
+ * BTCUSDT reuses Golden #1's exact numbers (as above); ETHUSDT is a distinct
+ * SELL decision with one real bearish evidence (R6 macd_bearish) so the
+ * argument-trace detail view has concrete, asset-specific content to assert
+ * on.
+ */
+const BTCUSDT_DECISION = FIXTURE_REPORT.decisions.find((d) => d.asset === 'BTCUSDT')!;
+
+const MULTI_ASSET_REPORT: DecisionReport = {
+  cycleId: 'cycle_e2e_multi_asset_fixture',
+  computedAt: 1700176400000,
+  decisions: [
+    BTCUSDT_DECISION,
+    {
+      asset: 'ETHUSDT',
+      t: 1700176400000,
+      recommendation: 'SELL',
+      bullish: {
+        thesis: 'bullish',
+        supporters: [],
+        aggregated: { gamma: 0, rho: 0 },
+        net: { gamma: 0, rho: 0 },
+        score: 0.5,
+      },
+      bearish: {
+        thesis: 'bearish',
+        supporters: [],
+        aggregated: { gamma: 0.8, rho: 0.1 },
+        net: { gamma: 0.8, rho: 0.1 },
+        score: 0.85,
+      },
+      gap: 0.35,
+      thresholds: { theta: 0.67, delta: 0.2 },
+      trace: {
+        candles: [],
+        turtle: '',
+        evidences: [
+          {
+            predicate: 'macd_bearish',
+            label: { gamma: 0.8, rho: 0.1 },
+            t: 1700176400000,
+            asset: 'ETHUSDT',
+            window: { indicator: 'MACD', omega: 50, beta: 1 },
+            provenance: {
+              indicatorEventIri: 'faf:event_ETHUSDT_macdHistogram_1700176400000',
+              priceEventIris: ['faf:event_ETHUSDT_price_1700176400000'],
+              rawValue: -12.5,
+              sigmaOmega: 0.01,
+            },
+          },
+        ],
+      },
+    },
+  ],
+};
+
+test.describe('Dashboard asset filter and argument trace', () => {
+  test('filters by asset and renders the selected decision trace', async ({ page }) => {
+    await page.route('**/api/decisions', async (route) => {
+      await route.fulfill({ json: MULTI_ASSET_REPORT });
+    });
+
+    await page.goto('/');
+
+    // Default filter ("All assets") shows both rows.
+    const btcRow = page.locator('tbody tr', { hasText: 'BTCUSDT' });
+    const ethRow = page.locator('tbody tr', { hasText: 'ETHUSDT' });
+    await expect(btcRow).toBeVisible();
+    await expect(ethRow).toBeVisible();
+
+    // Filtering to ETHUSDT hides the BTCUSDT row and keeps only ETHUSDT's.
+    await page.getByLabel('Asset filter').selectOption('ETHUSDT');
+    await expect(ethRow).toBeVisible();
+    await expect(btcRow).not.toBeVisible();
+    await expect(ethRow).toContainText('SELL');
+
+    // Clicking "View trace" on the remaining row renders the argument-trace
+    // detail table with content matching ETHUSDT's specific decision.
+    await ethRow.getByRole('button', { name: 'View trace' }).click();
+
+    const traceTable = page.locator('table', { hasText: 'Argument trace' });
+    await expect(traceTable).toBeVisible();
+    await expect(traceTable).toContainText('macd_bearish');
+    await expect(traceTable).toContainText('R6');
+    await expect(traceTable).toContainText('bearish');
+  });
+});

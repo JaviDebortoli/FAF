@@ -23,7 +23,7 @@ El software sigue una arquitectura de cuatro capas orientada al flujo de datos c
 - Capa 1 - Ingesta Semántica (n8n): Orquestación de datos OHLCV e indicadores técnicos. Se enviarán periodicamente mediante webhooks en formato RDF. 
 - Capa 2 - Procesamiento de Flujos (RSP): Evaluación de condiciones mediante ventanas deslizantes W(S, ω, β). Implementación de lógica para RSI, MACD, SMA y Bandas de Bollinger. 
 - Capa 3 - Motor de Razonamiento (LAF): Núcleo lógico que gestiona el grafo argumentativo dinámico. Ya cuenta con una implementacion en Java Spring en: https://github.com/JaviDebortoli/LAF
-- Capa 4 - Decisión e Interfaz (Angular + AI): Dashboard interactivo que muestra el "score" de las tesis y una narrativa de explicabilidad generada por un LLM.
+- Capa 4 - Decisión e Interfaz (Angular + AI): Dashboard interactivo que muestra el "score" de las tesis y una narrativa de explicabilidad generada por un LLM. (ver desvíos D1 y D3 arriba — frontend es Next.js/React, no Angular, y la narrativa LLM está diferida a v2)
 
 ## Especificaciones Técnicas y Reglas de Negocio
 
@@ -44,7 +44,7 @@ Una recomendación solo se emite si se cumplen los umbrales de la tesis:
   - Umbral de Activación (θ): σ(μ) ≥ 0.67. 
 - Umbral de Brecha (δ): σ(μdom) − σ(μinf) ≥ 0.20. 
 
-## Feature de Inteligencia Artificial
+## Feature de Inteligencia Artificial (ver desvío D3 arriba — diferido a v2)
 El sistema debe incluir un flujo de proceso que tome la traza del grafo y genere una narrativa humana:
 - Debe identificar argumentos DEFEATED (delta = 0.0) y ADMISSIBLE (delta > 0.0).
 - El LLM debe redactar por qué se priorizó una señal sobre otra (ej: "Se recomienda comprar porque la sobreventa del RSI compensó la tendencia bajista de la SMA").
