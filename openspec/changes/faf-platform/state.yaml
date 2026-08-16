@@ -12,34 +12,38 @@ dag:
   design: done
   tasks: done
   apply: done (PR1, PR2, PR3 all implemented and committed)
-  verify: done (PASS WITH WARNINGS - 0 CRITICAL, 4 WARNING, 1 SUGGESTION)
+  verify: done (whole-change PASS WITH WARNINGS closed; PR1/PR2 deep-scrutiny passes also closed; D6 RSI window fix applied) — re-verify pending before archive
   archive: pending
-next_recommended: sdd-archive (whenever the user is ready to close the change)
+next_recommended: sdd-verify (final full re-pass), then sdd-archive
 pr1:
   branch: faf-platform/pr1-core-algebra
   status: committed (a4e31ac docs, f3c9c6c feat), independently verified (31/31 tests, tsc clean)
   tasks_done: [0.1, 0.2, 1.1-1.7, 2.1-2.3]
   tasks_deferred: [0.3 to PR2]
   not_pushed: true
+  deep_verify: "verify-report-pr1.md — PASS WITH WARNINGS, 0 CRITICAL, 3 WARNING (all closed via 6b36631: ThesisState.score doc comment, oplus doc comment, trace-payload test), 1 SUGGESTION"
 pr2:
   branch: faf-platform/pr2-ingestion
   status: committed (ac78520 feat, ec9e210 fix D5), independently verified (106/106 tests, tsc clean)
   tasks_done: [0.3, 3.1-3.12, 4.1-4.4, 5.1-5.2]
   size_exception: accepted (~1800-2500 lines forecast)
   not_pushed: true
+  deep_verify: "verify-report-pr2.md — PASS WITH WARNINGS, 0 CRITICAL, 1 WARNING (RSI Wilder-smoothing bug, closed via D6/d102b0c), 2 SUGGESTIONS (no action required)"
 pr3:
   branch: faf-platform/pr3-delivery
   status: committed (9f55b71 feat cycle+API, 5f80800 feat UI+e2e+n8n), independently verified (123/123 vitest, 1/1 playwright, tsc clean)
   tasks_done: [6.1-6.7, 7.1-7.3]
   not_pushed: true
   note: "context compaction occurred mid-PR3; orchestrator reconstructed state from disk, found and fixed a real tsc error (mistyped vitest mock) that had not been caught by the passing vitest suite, before resuming and completing the batch"
+  post_verify_fixes: "d4ddbfc closed all 4 WARNING + 1 SUGGESTION from the original whole-change verify-report.md (Vercel cache doc, n8n Set-Symbol nodes, e2e multi-asset test, PRD pointers)"
 deviations:
   D5: {status: approved, summary: "MACD RSP-QL window 26->50 candles; indicator periods 12/26/9 unchanged", reason: "omega=26 degenerates EMA(slow) to 1 point, histogram/sigma_H always 0, macd evidence permanently silent"}
+  D6: {status: approved, summary: "RSI RSP-QL window 14->20 candles; indicator's own period (14) unchanged, passed explicitly to computeRSI", reason: "omega=14 makes the Wilder continuation loop never execute (13<13 false), only the seed simple-average ever fires; 20 (not 50, matching MACD/SMA) chosen deliberately to avoid a structural rho-collision that would force ominus's losing-thesis rho to always be exactly 0"}
 delivery:
   strategy: ask-on-risk
   chain_strategy: stacked-to-main
   pr_split: 3 (PR1 core-algebra L3+L4, PR2 ingestion L1+L2+adapter [size:exception, ~1800-2500 lines], PR3 delivery routes+UI)
-signoff: {D1: approved, D2: approved, D3: approved (defer to v2), D4: approved, D5: approved}
+signoff: {D1: approved, D2: approved, D3: approved (defer to v2), D4: approved, D5: approved, D6: approved}
 params:
   candle_timeframe: 1h
   v1_assets: [BTCUSDT, ETHUSDT, SOLUSDT]
