@@ -17,10 +17,10 @@ dag:
 next_recommended: sdd-verify (PR1) then sdd-apply (PR2)
 pr1:
   branch: faf-platform/pr1-core-algebra
-  status: implemented, independently verified (31/31 tests, tsc clean)
+  status: committed (a4e31ac docs, f3c9c6c feat), independently verified (31/31 tests, tsc clean)
   tasks_done: [0.1, 0.2, 1.1-1.7, 2.1-2.3]
   tasks_deferred: [0.3 to PR2]
-  not_committed: true
+  not_pushed: true
 delivery:
   strategy: ask-on-risk
   chain_strategy: stacked-to-main
