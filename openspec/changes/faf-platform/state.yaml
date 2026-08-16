@@ -11,10 +11,10 @@ dag:
   specs: done
   design: done
   tasks: done
-  apply: in_progress (PR1 done, PR2 done, PR3 pending)
+  apply: done (PR1, PR2, PR3 all implemented and committed)
   verify: pending
   archive: pending
-next_recommended: sdd-apply (PR3)
+next_recommended: sdd-verify
 pr1:
   branch: faf-platform/pr1-core-algebra
   status: committed (a4e31ac docs, f3c9c6c feat), independently verified (31/31 tests, tsc clean)
@@ -27,6 +27,12 @@ pr2:
   tasks_done: [0.3, 3.1-3.12, 4.1-4.4, 5.1-5.2]
   size_exception: accepted (~1800-2500 lines forecast)
   not_pushed: true
+pr3:
+  branch: faf-platform/pr3-delivery
+  status: committed (9f55b71 feat cycle+API, 5f80800 feat UI+e2e+n8n), independently verified (123/123 vitest, 1/1 playwright, tsc clean)
+  tasks_done: [6.1-6.7, 7.1-7.3]
+  not_pushed: true
+  note: "context compaction occurred mid-PR3; orchestrator reconstructed state from disk, found and fixed a real tsc error (mistyped vitest mock) that had not been caught by the passing vitest suite, before resuming and completing the batch"
 deviations:
   D5: {status: approved, summary: "MACD RSP-QL window 26->50 candles; indicator periods 12/26/9 unchanged", reason: "omega=26 degenerates EMA(slow) to 1 point, histogram/sigma_H always 0, macd evidence permanently silent"}
 delivery:
