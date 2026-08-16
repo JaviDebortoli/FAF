@@ -27,5 +27,10 @@ next-env.d.ts
 # vitest
 coverage/
 
+# playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
 # local agent tooling state (machine-specific paths, not project source)
 .atl/

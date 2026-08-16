@@ -68,7 +68,14 @@ export interface ThesisState {
   supporters: Argument[];
   aggregated: Label; // lambda(mu)  — oplus; <0,0> when supporters is empty
   net: Label; // lambda*(mu) — ominus
-  score: number; // sigma(mu) = 0.5*gamma + 0.5*(1-rho)
+  // sigma(mu) = 0.5*gamma + 0.5*(1-rho). Populated by L3 (src/laf/graph.ts's
+  // private scoreOf) for L3 self-containment ONLY, per the mandated
+  // L3-before-L4 build order (which forbids an L3 -> L4 import of the
+  // canonical score()). NOT authoritative: must never be read by L4
+  // (src/decision/policy.ts) or presentation code. Both correctly ignore
+  // this field and recompute independently from `.net` via the canonical
+  // exported score() in src/decision/policy.ts.
+  score: number;
 }
 
 export type Recommendation = 'BUY' | 'SELL' | 'NO_RECOMMENDATION'; // COMPRAR / VENDER / SIN RECOMENDACION

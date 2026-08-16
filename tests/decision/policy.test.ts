@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { score, decide, THETA, DELTA } from '@/src/decision/policy';
-import type { Argument, Evidence, Label, ThesisState } from '@/src/domain/types';
+import type { Argument, Candle, Evidence, Label, ThesisState } from '@/src/domain/types';
 
 // FAF paper eq. 10-11, §3.5 — decision policy: score sigma(mu), thresholds
 // theta=0.67 / delta=0.20, three-way BUY/SELL/NO_RECOMMENDATION rule.
@@ -127,5 +127,32 @@ describe('decide (three-way rule, eq. 11)', () => {
     expect(decision.recommendation).toBe('NO_RECOMMENDATION');
     expect(decision.reason).toBe('INSUFFICIENT_DOMINANCE');
     expect(decision.gap).toBeCloseTo(0.1, 9);
+  });
+});
+
+describe('trace payload (full pass-through, PR1 self-containment)', () => {
+  it('decision.trace.evidences/candles/turtle are exactly the DecisionContext values passed to decide()', () => {
+    const bullish = thesisState('bullish', { gamma: 0.5, rho: 0 }, true);
+    const bearish = thesisState('bearish', { gamma: 0, rho: 0.05 }, true);
+
+    const traceCandles: Candle[] = [
+      { openTime: 1_700_000_000_000, open: 100, high: 101, low: 99, close: 100.5, volume: 10 },
+    ];
+    const traceTurtle = '@prefix faf: <http://faf.example/ontology#> .\nfaf:event_BTCUSDT_price_1700000000000 a faf:PriceEvent .\n';
+    const traceEvidences: Evidence[] = [dummyEvidence];
+
+    const nonTrivialCtx = {
+      asset: 'BTCUSDT',
+      t: 1_700_000_000_000,
+      candles: traceCandles,
+      turtle: traceTurtle,
+      evidences: traceEvidences,
+    };
+
+    const decision = decide(bullish, bearish, nonTrivialCtx);
+
+    expect(decision.trace.evidences).toBe(traceEvidences);
+    expect(decision.trace.candles).toBe(traceCandles);
+    expect(decision.trace.turtle).toBe(traceTurtle);
   });
 });
