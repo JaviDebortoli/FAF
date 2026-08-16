@@ -1,0 +1,32 @@
+change: faf-platform
+created: 2026-08-15
+preflight:
+  pace: interactive
+  artifact_store: hybrid
+  delivery_strategy: ask-on-risk
+  review_budget_lines: 800
+dag:
+  explore: done
+  proposal: done
+  specs: done
+  design: done
+  tasks: done
+  apply: in_progress (PR1 done, PR2/PR3 pending)
+  verify: pending
+  archive: pending
+next_recommended: sdd-verify (PR1) then sdd-apply (PR2)
+pr1:
+  branch: faf-platform/pr1-core-algebra
+  status: implemented, independently verified (31/31 tests, tsc clean)
+  tasks_done: [0.1, 0.2, 1.1-1.7, 2.1-2.3]
+  tasks_deferred: [0.3 to PR2]
+  not_committed: true
+delivery:
+  strategy: ask-on-risk
+  chain_strategy: stacked-to-main
+  pr_split: 3 (PR1 core-algebra L3+L4, PR2 ingestion L1+L2+adapter [size:exception, ~1800-2500 lines], PR3 delivery routes+UI)
+signoff: {D1: approved, D2: approved, D3: approved (defer to v2), D4: approved}
+params:
+  candle_timeframe: 1h
+  v1_assets: [BTCUSDT, ETHUSDT, SOLUSDT]
+  note: "1h candles mean most 1-5min n8n cycles recompute against the same in-progress candle; sdd-tasks should address cron cadence alignment or document as expected"

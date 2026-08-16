@@ -1,0 +1,39 @@
+schema: spec-driven
+
+context: |
+  Tech stack: greenfield — no code yet. Target stack under discussion (Next.js backend,
+  frontend framework TBD in sdd-propose, LAF engine reimplemented natively in TypeScript,
+  RSP-QL/stream layer approach TBD).
+  Architecture: 4-layer stream-oriented pipeline per docs/papers/Financial_Argumentation_Framework.pdf
+    L1 Semantic representation (RDF) -> L2 Stream processing (RSP-QL sliding windows) ->
+    L3 Argumentative reasoning (LAF label algebra) -> L4 Decision policy (score + thresholds).
+  Testing: Strict TDD Mode active (global user convention). Test runner TBD once stack is chosen in sdd-design.
+  Style: N/A yet (no code).
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Flag any deviation from docs/PRD.md explicitly and require user sign-off
+    - Cross-reference every architectural claim against docs/papers/Financial_Argumentation_Framework.pdf
+      and docs/papers/An approach to characterize graded entailment of arguments through a label-based framework.pdf
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Formulas and thresholds (label algebra, score, θ, δ) must match the FAF paper exactly unless the proposal explicitly changes them
+  design:
+    - Include sequence diagrams for complex flows (stream ingestion, window evaluation, argument labeling, decision emission)
+    - Document architecture decisions with rationale, especially fidelity-vs-pragmatism trade-offs (RSP-QL engine, L3 persistence)
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    guidelines:
+      - Follow existing code patterns
+    tdd: true
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
