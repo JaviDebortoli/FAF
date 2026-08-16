@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/**
+ * Dark-only theme tokens (design.md "Tailwind Adoption"): the deliverable is
+ * a projected thesis demo, not a production product, so there is no light
+ * mode and no toggle — fixed values only. `--color-buy`/`--color-sell` carry
+ * the BUY/SELL semantic (shared by cards, gauge, sparkline, and the Tier 2
+ * argument graph via `currentColor`/`var()`); `--color-inactive` marks
+ * non-fired argument-graph leaves; `--color-muted` is secondary/disclaimer
+ * text (e.g. the "generado por IA" narrative label).
+ */
+@theme {
+  --color-buy: #22c55e;
+  --color-sell: #f43f5e;
+  --color-inactive: #52525b;
+  --color-muted: #a1a1aa;
+}
+
+body {
+  background-color: #09090b;
+  color: #f4f4f5;
+}

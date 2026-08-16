@@ -50,18 +50,18 @@ Chain strategy: pending
 
 ## Phase 1: Tailwind v4 Setup + Pure Tier-1 Geometry/Selection (PR1a)
 
-- [ ] 1.1 `package.json`: add `tailwindcss@^4`, `@tailwindcss/postcss` devDependencies.
-- [ ] 1.2 Create `postcss.config.mjs` wiring `@tailwindcss/postcss`.
-- [ ] 1.3 Create `app/globals.css`: `@import "tailwindcss";` + `@theme` block with `--color-buy`, `--color-sell`, `--color-inactive`, `--color-muted` tokens; dark theme only, no toggle.
-- [ ] 1.4 `app/layout.tsx`: import `./globals.css`, add dark base classes.
-- [ ] 1.5 RED `tests/dashboard/lib/scores.test.ts`: asserts `computeScores(decision)` uses canonical `score()` from `src/decision/policy.ts` on `decision.bullish.net`/`decision.bearish.net`, never `.score`; θ/δ read from `decision.thresholds`.
-- [ ] 1.6 GREEN `app/(dashboard)/lib/scores.ts`.
-- [ ] 1.7 RED `tests/dashboard/lib/select.test.ts`: `selectActionable(report)` filters out `NO_RECOMMENDATION`; direction filter (`ALL|BUY|SELL`) table over BUY/SELL/NO_RECOMMENDATION mixes incl. all-`NO_RECOMMENDATION`.
-- [ ] 1.8 GREEN `app/(dashboard)/lib/select.ts`.
-- [ ] 1.9 RED `tests/dashboard/lib/gauge.test.ts`: semicircular arc `d` string for σ⁺/σ⁻ needle angles + θ tick position; boundary σ=θ case.
-- [ ] 1.10 GREEN `app/(dashboard)/lib/gauge.ts`.
-- [ ] 1.11 RED `tests/dashboard/lib/sparkline.test.ts`: `sparklinePath(closes, w, h)` path string over normalized closes; flat-series guard (`max===min`→mid-line, no div-by-zero); empty-candles guard.
-- [ ] 1.12 GREEN `app/(dashboard)/lib/sparkline.ts`.
+- [x] 1.1 `package.json`: add `tailwindcss@^4`, `@tailwindcss/postcss` devDependencies.
+- [x] 1.2 Create `postcss.config.mjs` wiring `@tailwindcss/postcss`.
+- [x] 1.3 Create `app/globals.css`: `@import "tailwindcss";` + `@theme` block with `--color-buy`, `--color-sell`, `--color-inactive`, `--color-muted` tokens; dark theme only, no toggle.
+- [x] 1.4 `app/layout.tsx`: import `./globals.css`, add dark base classes.
+- [x] 1.5 RED `tests/dashboard/lib/scores.test.ts`: asserts `computeScores(decision)` uses canonical `score()` from `src/decision/policy.ts` on `decision.bullish.net`/`decision.bearish.net`, never `.score`; θ/δ read from `decision.thresholds`.
+- [x] 1.6 GREEN `app/(dashboard)/lib/scores.ts`.
+- [x] 1.7 RED `tests/dashboard/lib/select.test.ts`: `selectActionable(report)` filters out `NO_RECOMMENDATION`; direction filter (`ALL|BUY|SELL`) table over BUY/SELL/NO_RECOMMENDATION mixes incl. all-`NO_RECOMMENDATION`.
+- [x] 1.8 GREEN `app/(dashboard)/lib/select.ts`.
+- [x] 1.9 RED `tests/dashboard/lib/gauge.test.ts`: semicircular arc `d` string for σ⁺/σ⁻ needle angles + θ tick position; boundary σ=θ case.
+- [x] 1.10 GREEN `app/(dashboard)/lib/gauge.ts`.
+- [x] 1.11 RED `tests/dashboard/lib/sparkline.test.ts`: `sparklinePath(closes, w, h)` path string over normalized closes; flat-series guard (`max===min`→mid-line, no div-by-zero); empty-candles guard.
+- [x] 1.12 GREEN `app/(dashboard)/lib/sparkline.ts`.
 
 ## Phase 2: Tier 1 UI — Card Grid, Filter, Empty State (PR1b)
 
