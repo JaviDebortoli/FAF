@@ -59,7 +59,11 @@ describe('extractEvidence (R2S operator)', () => {
     const evidences = extractEvidence(store, 'BTCUSDT', now);
     const predicates = evidences.map((e) => e.predicate).sort();
 
-    // RSI: all-losses in every sub-window -> RSI=0 -> rsi_bullish (oversold reversal signal)
+    // RSI (DEVIATION D6, see design.md / docs/PRD.md): omega widened from the
+    //   paper's literal 14 to 20 (RSI's own defining period, 14, is now passed
+    //   explicitly to computeRSI, so Wilder's continuation loop genuinely
+    //   runs). All-losses in every sub-window -> RSI=0 regardless of period
+    //   -> rsi_bullish (oversold reversal signal), unaffected by D6 here.
     // SMA: SMA20 (mean of the 20 most recent/lowest closes) < SMA50 (mean of all 50,
     //   including older/higher closes) in a monotonic decline -> sma_bearish
     // MACD (DEVIATION D5, see design.md / docs/PRD.md): omega widened from the
@@ -77,8 +81,8 @@ describe('extractEvidence (R2S operator)', () => {
     expect(rsiEvidence.label.gamma).toBeCloseTo(1, 9); // RSI=0 -> (30-0)/30=1
     expect(rsiEvidence.label.rho).toBeGreaterThanOrEqual(0);
     expect(rsiEvidence.label.rho).toBeLessThanOrEqual(1);
-    expect(rsiEvidence.window).toEqual({ indicator: 'RSI', omega: 14, beta: 1 });
-    expect(rsiEvidence.provenance.priceEventIris).toHaveLength(14);
+    expect(rsiEvidence.window).toEqual({ indicator: 'RSI', omega: 20, beta: 1 });
+    expect(rsiEvidence.provenance.priceEventIris).toHaveLength(20);
     expect(rsiEvidence.provenance.indicatorEventIri).toContain('BTCUSDT');
     expect(rsiEvidence.provenance.rawValue).toBeCloseTo(0, 9);
 

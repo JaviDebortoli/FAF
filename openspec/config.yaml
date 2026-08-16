@@ -1,14 +1,18 @@
 schema: spec-driven
 
 context: |
-  Tech stack: greenfield — no code yet. Target stack under discussion (Next.js backend,
-  frontend framework TBD in sdd-propose, LAF engine reimplemented natively in TypeScript,
-  RSP-QL/stream layer approach TBD).
+  Tech stack: Next.js (App Router) + TypeScript + React, single app (Angular dropped per D1).
+    N3.js for RDF. Vitest for unit/integration tests, Playwright for e2e. n8n workflow
+    exported at n8n/faf-workflow.json (scheduler + raw fetch only, per D2).
   Architecture: 4-layer stream-oriented pipeline per docs/papers/Financial_Argumentation_Framework.pdf
-    L1 Semantic representation (RDF) -> L2 Stream processing (RSP-QL sliding windows) ->
-    L3 Argumentative reasoning (LAF label algebra) -> L4 Decision policy (score + thresholds).
-  Testing: Strict TDD Mode active (global user convention). Test runner TBD once stack is chosen in sdd-design.
-  Style: N/A yet (no code).
+    L1 src/rdf (RDF mapping) -> L2 src/stream (hand-built sliding-window engine over N3.js, per D-A) ->
+    L3 src/laf (LAF label algebra) -> L4 src/decision (score + thresholds) -> src/cycle (pure L1-L4 composition).
+    app/api/{cycle,decisions} routes, app/(dashboard) UI. See openspec/changes/faf-platform/design.md.
+  Testing: Strict TDD Mode active (global user convention). Test runner: Vitest. Golden tests
+    (tests/golden/{algebra-only,paper-example}.test.ts) reproduce the FAF paper's Section 3
+    worked example exactly (BUY, sigma+=0.75, sigma-=0.475, gap=0.275) at 1e-9 tolerance.
+  Style: TypeScript strict mode, no comments except non-obvious rationale (paper equation
+    citations, deviation notes). See openspec/changes/faf-platform/design.md for conventions.
 
 rules:
   proposal:
@@ -30,10 +34,11 @@ rules:
     guidelines:
       - Follow existing code patterns
     tdd: true
-    test_command: ""
+    test_command: "npx vitest run"
   verify:
-    test_command: ""
-    build_command: ""
+    test_command: "npx vitest run"
+    build_command: "npx tsc --noEmit"
+    e2e_command: "npx playwright test"
     coverage_threshold: 0
   archive:
     - Warn before merging destructive deltas

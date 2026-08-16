@@ -72,6 +72,7 @@ Alternative coarser 3-slice split (user example): (a) L3+L4 "core algebra" = Uni
 - [x] 3.9 RED `tests/stream/window.test.ts`: W(S,ω,β) per Cuadro1 in 1h-candle units (RSI 14/1, MACD 26/1, SMA 50/1, Bollinger 20/1); injected clock; content size=ω; cold start (<50 candles)→[]; §5 edge-effect documented as observed behavior.
 - [x] 3.10 GREEN `src/stream/window.ts` (S2R operator over quad stream; fixtures use hand-built N3 Store, no L1 dependency).
   - **Post-hoc correction (bug fix, post-PR2)**: `src/stream/evidence.ts`'s `MACD_SPEC.omega` was corrected from the Cuadro-1 literal 26 to 50 — at omega=26 the MACD-line series degenerates to a single point, making histogram/sigma_H always 0 and macd_bullish/macd_bearish permanently unreachable. Documented as **deviation D5**; see `design.md`'s "Deviation D5" section and `docs/PRD.md`'s "Desvíos aprobados" table.
+  - **Post-hoc correction (bug fix, post-PR3 verify)**: `src/stream/evidence.ts`'s `RSI_SPEC.omega` was corrected from the Cuadro-1 literal 14 to 20 (RSI's own period, 14, stays unchanged and is now passed explicitly to `computeRSI`) — at omega=14, `diffs.length=13` equals the default period, so the Wilder continuation loop never ran and the system only ever emitted the seed step's plain average, never genuine Wilder (1978) smoothing. 20 (not 50, matching MACD_SPEC/SMA_SPEC) was chosen to avoid a structural rho-collision that would otherwise force `ominus`'s losing-thesis rho to always be exactly 0. Documented as **deviation D6**; see `design.md`'s "Deviation D6" section and `docs/PRD.md`'s "Desvíos aprobados" table.
 - [x] 3.11 RED `tests/stream/evidence.test.ts`: R2S — active conditions→Evidence[] (0..8), non-monotonic auto-stop, provenance populated.
 - [x] 3.12 GREEN `src/stream/evidence.ts`: `extractEvidence(store, asset, now): Evidence[]` composing window+indicators+confidence+risk.
 
@@ -89,19 +90,19 @@ Alternative coarser 3-slice split (user example): (a) L3+L4 "core algebra" = Uni
 
 ## Phase 6: Cycle Orchestration & API Routes
 
-- [ ] 6.1 Derive synthetic 1h-candle fixtures yielding RSI=15 (γ=0.50), a MACD histogram giving γ=0.80, a bearish SMA giving γ=0.15, and σ_ω values reproducing ρ=0.40/0.10/0.30; document derivation math in `tests/fixtures/paper-example/README.md`. Prerequisite for 6.3.
-- [ ] 6.2 GREEN `src/cycle/runCycle.ts`: pure `runCycle(rawKlines): DecisionReport` (L1→L4 + trace assembly); `src/cycle/latest.ts` module-scope cache.
-- [ ] 6.3 `tests/golden/paper-example.test.ts` (Golden #1) using 6.1 fixtures through `runCycle`: assert λ*(μ+)=⟨0.50,0.00⟩, σ+=0.75, σ-=0.475, gap=0.275→BUY, tol 1e-9.
-- [ ] 6.4 RED `tests/cycle/idempotency.test.ts`: two `runCycle` calls with identical klines (same in-progress hourly candle within n8n's 1-5min cron) → byte-identical `DecisionReport`. Codifies design D-B: correctness never depends on cache, recompute is safe/idempotent by construction — no cron-cadence alignment needed. Add note to `docs/` explaining this explicitly (chosen over aligning cadence to candle-close).
-- [ ] 6.5 RED `tests/api/cycle.test.ts`: malformed/oversized payload→400, no `runCycle` call (T-1); symbol outside allowlist rejected; missing shared-secret header rejected (T-2).
-- [ ] 6.6 GREEN `app/api/cycle/route.ts`: POST — schema validation, shared-secret check, PushedKlinesSource/BinanceHttpSource, calls `runCycle`, `cache.put(ttl=β)`.
-- [ ] 6.7 RED+GREEN `tests/api/decisions.test.ts` + `app/api/decisions/route.ts`: GET — cache-hit equals on-demand-recompute output.
+- [x] 6.1 Derive synthetic 1h-candle fixtures yielding RSI=15 (γ=0.50), a MACD histogram giving γ=0.80, a bearish SMA giving γ=0.15, and σ_ω values reproducing ρ=0.40/0.10/0.30; document derivation math in `tests/fixtures/paper-example/README.md`. Prerequisite for 6.3.
+- [x] 6.2 GREEN `src/cycle/runCycle.ts`: pure `runCycle(rawKlines): DecisionReport` (L1→L4 + trace assembly); `src/cycle/latest.ts` module-scope cache.
+- [x] 6.3 `tests/golden/paper-example.test.ts` (Golden #1) using 6.1 fixtures through `runCycle`: assert λ*(μ+)=⟨0.50,0.00⟩, σ+=0.75, σ-=0.475, gap=0.275→BUY, tol 1e-9.
+- [x] 6.4 RED `tests/cycle/idempotency.test.ts`: two `runCycle` calls with identical klines (same in-progress hourly candle within n8n's 1-5min cron) → byte-identical `DecisionReport`. Codifies design D-B: correctness never depends on cache, recompute is safe/idempotent by construction — no cron-cadence alignment needed. Add note to `docs/` explaining this explicitly (chosen over aligning cadence to candle-close).
+- [x] 6.5 RED `tests/api/cycle.test.ts`: malformed/oversized payload→400, no `runCycle` call (T-1); symbol outside allowlist rejected; missing shared-secret header rejected (T-2).
+- [x] 6.6 GREEN `app/api/cycle/route.ts`: POST — schema validation, shared-secret check, PushedKlinesSource/BinanceHttpSource, calls `runCycle`, `cache.put(ttl=β)`.
+- [x] 6.7 RED+GREEN `tests/api/decisions.test.ts` + `app/api/decisions/route.ts`: GET — cache-hit equals on-demand-recompute output.
 
 ## Phase 7: UI Decision Dashboard
 
-- [ ] 7.1 `app/(dashboard)/page.tsx` + components: tabular decision list (asset, timestamp, decision, σ+, σ-, gap), multi-asset filter, argument-trace detail table (predicates→rules→labels→net; no narrative text, no graph viz — D3 deferred).
-- [ ] 7.2 `tests/e2e/dashboard.spec.ts` (Playwright): smoke test against fixture-backed cycle.
-- [ ] 7.3 `n8n/faf-workflow.json`: export Schedule Trigger + HTTP fetch + POST /api/cycle workflow; cadence 1-5min is safe per 6.4 (idempotent recompute against in-progress candle is expected, not a bug).
+- [x] 7.1 `app/(dashboard)/page.tsx` + components: tabular decision list (asset, timestamp, decision, σ+, σ-, gap), multi-asset filter, argument-trace detail table (predicates→rules→labels→net; no narrative text, no graph viz — D3 deferred).
+- [x] 7.2 `tests/e2e/dashboard.spec.ts` (Playwright): smoke test against fixture-backed cycle.
+- [x] 7.3 `n8n/faf-workflow.json`: export Schedule Trigger + HTTP fetch + POST /api/cycle workflow; cadence 1-5min is safe per 6.4 (idempotent recompute against in-progress candle is expected, not a bug).
 
 ## Implementation Order
 
