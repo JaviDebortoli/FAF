@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "n3": "^1.17.4",
@@ -17,6 +18,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/n3": "^1.16.4",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",

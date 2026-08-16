@@ -1,0 +1,152 @@
+{
+  "name": "FAF - Cycle Trigger",
+  "nodes": [
+    {
+      "id": "schedule-trigger-1",
+      "name": "Schedule Trigger (1-5min)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-40, 300],
+      "notes": "Per design.md D2: n8n stays cron+fetch only, no RDF-ification. Cadence (2min here, tune 1-5min per PRD) is INTENTIONALLY finer than the 1h candle beta most ticks land on an in-progress candle. That is expected and safe: docs/architecture-notes.md documents that runCycle is a pure function of its input candles (no wall-clock reads), so repeated /api/cycle calls against an unchanged/in-progress candle are idempotent no-ops (tests/cycle/idempotency.test.ts), not a bug to engineer around with cadence alignment.",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fetch-klines-btc",
+      "name": "Fetch Klines - BTCUSDT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 140],
+      "notes": "Raw fetch only (D2) - one HTTP Request node per allowlisted asset (src/market/assets.ts), limit=50 to match the system's uniform per-cycle window (see design.md 'Why 50').",
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.binance.com/api/v3/klines",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "symbol", "value": "BTCUSDT" },
+            { "name": "interval", "value": "1h" },
+            { "name": "limit", "value": "50" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "fetch-klines-eth",
+      "name": "Fetch Klines - ETHUSDT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 300],
+      "notes": "Raw fetch only (D2) - one HTTP Request node per allowlisted asset (src/market/assets.ts), limit=50 to match the system's uniform per-cycle window (see design.md 'Why 50').",
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.binance.com/api/v3/klines",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "symbol", "value": "ETHUSDT" },
+            { "name": "interval", "value": "1h" },
+            { "name": "limit", "value": "50" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "fetch-klines-sol",
+      "name": "Fetch Klines - SOLUSDT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 460],
+      "notes": "Raw fetch only (D2) - one HTTP Request node per allowlisted asset (src/market/assets.ts), limit=50 to match the system's uniform per-cycle window (see design.md 'Why 50').",
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.binance.com/api/v3/klines",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "symbol", "value": "SOLUSDT" },
+            { "name": "interval", "value": "1h" },
+            { "name": "limit", "value": "50" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "aggregate-payload",
+      "name": "Aggregate (build /api/cycle payload)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "notes": "Only reshapes raw Binance kline arrays [openTime,open,high,low,close,volume,...] into the Candle[] shape app/api/cycle/route.ts expects ({symbol, klines:[{openTime,open,high,low,close,volume}]}). No RDF, no indicator math, no decision logic here - all of that stays server-side (D2).",
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Each incoming item carries one asset's raw Binance klines response\n// (array of [openTime, open, high, low, close, volume, closeTime, ...]).\n// item.json.symbol must be set upstream per branch (see 'symbol' below,\n// derived from the originating HTTP Request node's query parameter).\nconst SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];\n\nfunction toCandle(row) {\n  return {\n    openTime: Number(row[0]),\n    open: Number(row[1]),\n    high: Number(row[2]),\n    low: Number(row[3]),\n    close: Number(row[4]),\n    volume: Number(row[5]),\n  };\n}\n\nconst assets = items.map((item, i) => ({\n  symbol: SYMBOLS[i] ?? item.json.symbol,\n  klines: (Array.isArray(item.json) ? item.json : item.json.body ?? []).map(toCandle),\n}));\n\nreturn [{ json: { assets } }];"
+      }
+    },
+    {
+      "id": "post-cycle",
+      "name": "POST /api/cycle",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [740, 300],
+      "notes": "T-2 (design.md Threat Matrix): shared-secret header must match FAF_CYCLE_SHARED_SECRET (see .env.example) configured on the app deployment. Store the secret in an n8n credential/environment variable, never hardcoded in the workflow JSON.",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FAF_APP_BASE_URL }}/api/cycle",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "content-type", "value": "application/json" },
+            { "name": "x-faf-shared-secret", "value": "={{ $env.FAF_CYCLE_SHARED_SECRET }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (1-5min)": {
+      "main": [
+        [
+          { "node": "Fetch Klines - BTCUSDT", "type": "main", "index": 0 },
+          { "node": "Fetch Klines - ETHUSDT", "type": "main", "index": 0 },
+          { "node": "Fetch Klines - SOLUSDT", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch Klines - BTCUSDT": {
+      "main": [[{ "node": "Aggregate (build /api/cycle payload)", "type": "main", "index": 0 }]]
+    },
+    "Fetch Klines - ETHUSDT": {
+      "main": [[{ "node": "Aggregate (build /api/cycle payload)", "type": "main", "index": 0 }]]
+    },
+    "Fetch Klines - SOLUSDT": {
+      "main": [[{ "node": "Aggregate (build /api/cycle payload)", "type": "main", "index": 0 }]]
+    },
+    "Aggregate (build /api/cycle payload)": {
+      "main": [[{ "node": "POST /api/cycle", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "faf-platform-reference-export"
+  }
+}
