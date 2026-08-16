@@ -10,6 +10,7 @@
 | D2 | n8n envía webhooks "en formato RDF" | n8n solo dispara y trae datos crudos; la RDF-ificación (Capa 1) se hace en TypeScript | Mantener el código académicamente crítico bajo TDD estricto |
 | D3 | Feature de IA (narrativa LLM) y grafo argumentativo visual son parte del sistema | Diferidos a v2 — v1 entrega decisión + traza completa en JSON/tabla | Son solo presentación sobre un núcleo de razonamiento que no cambia; la narrativa LLM es no determinística |
 | D4 | Activo no especificado (ejemplos con AAPL) | Activos cripto vía Binance (público, sin API key) | RSI/MACD/SMA/Bollinger y R1-R8 son agnósticos al activo; solo cambia el ejemplo narrativo, no la fidelidad formal |
+| D5 | Ventana de MACD = 26 velas (Cuadro 1) | Ventana RSP-QL de MACD = 50 velas (los períodos propios del indicador, 12/26/9, no cambian) | Con omega=26 literal, la serie EMA(26) degenera a un único punto (EMA necesita `período` valores solo para sembrarse, sin quedar ninguno para el paso recursivo), por lo que histogram y sigma_H son siempre 0 y el indicador queda permanentemente inactivo; 50 iguala el tamaño de ventana ya usado uniformemente por el sistema (fetch de 50 velas por ciclo, requerido igualmente por la ventana de 50 de SMA en el propio Cuadro 1) |
 
 ---
 

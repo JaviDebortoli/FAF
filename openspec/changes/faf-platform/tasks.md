@@ -41,7 +41,7 @@ Alternative coarser 3-slice split (user example): (a) L3+L4 "core algebra" = Uni
 
 - [x] 0.1 Scaffold Next.js (App Router, TS); add Vitest + N3.js deps; `vitest.config.ts`.
 - [x] 0.2 `src/domain/types.ts`: Candle, Label, Evidence, Argument, ThesisState, Decision, DecisionReport, WindowSpec (no imports).
-- [ ] 0.3 `src/market/assets.ts`: v1 allowlist `['BTCUSDT','ETHUSDT','SOLUSDT']` + Binance klines base URL const. (deferred to PR2 — not used by L3/L4)
+- [x] 0.3 `src/market/assets.ts`: v1 allowlist `['BTCUSDT','ETHUSDT','SOLUSDT']` + Binance klines base URL const.
 
 ## Phase 1: L3 Argumentation Engine (mandatory first — TDD)
 
@@ -61,30 +61,31 @@ Alternative coarser 3-slice split (user example): (a) L3+L4 "core algebra" = Uni
 
 ## Phase 3: L2 Stream Windowing (TDD; timeframe=1h candles, SMA50 window spans ~50h history)
 
-- [ ] 3.1 RED `tests/stream/risk.test.ts`: eq(1)(2) returns/σ_ω; paper value σ_ω=0.008→ρ=0.40; clamp at 1; σ_ω=0 guard→ρ=0.
-- [ ] 3.2 GREEN `src/stream/risk.ts`.
-- [ ] 3.3 RED `tests/stream/confidence.test.ts`: 8 Cuadro-2 γ formulas incl. RSI15→γ=0.50, RSI5→γ=0.83; clamp at 1.
-- [ ] 3.4 GREEN `src/stream/confidence.ts`.
-- [ ] 3.5 RED `tests/stream/indicators/rsi.test.ts` + `macd.test.ts`: Wilder RSI14 + EMA12/26/9 MACD vs published reference vectors, explicit smoothing/seed cases.
-- [ ] 3.6 GREEN `src/stream/indicators/rsi.ts`, `macd.ts`.
-- [ ] 3.7 RED `tests/stream/indicators/sma.test.ts` + `bollinger.test.ts`: SMA20/50 + BB20±2σ vs reference vectors; SMA50=0 and Lsup=Linf guards.
-- [ ] 3.8 GREEN `src/stream/indicators/sma.ts`, `bollinger.ts`.
-- [ ] 3.9 RED `tests/stream/window.test.ts`: W(S,ω,β) per Cuadro1 in 1h-candle units (RSI 14/1, MACD 26/1, SMA 50/1, Bollinger 20/1); injected clock; content size=ω; cold start (<50 candles)→[]; §5 edge-effect documented as observed behavior.
-- [ ] 3.10 GREEN `src/stream/window.ts` (S2R operator over quad stream; fixtures use hand-built N3 Store, no L1 dependency).
-- [ ] 3.11 RED `tests/stream/evidence.test.ts`: R2S — active conditions→Evidence[] (0..8), non-monotonic auto-stop, provenance populated.
-- [ ] 3.12 GREEN `src/stream/evidence.ts`: `extractEvidence(store, asset, now): Evidence[]` composing window+indicators+confidence+risk.
+- [x] 3.1 RED `tests/stream/risk.test.ts`: eq(1)(2) returns/σ_ω; paper value σ_ω=0.008→ρ=0.40; clamp at 1; σ_ω=0 guard→ρ=0.
+- [x] 3.2 GREEN `src/stream/risk.ts`.
+- [x] 3.3 RED `tests/stream/confidence.test.ts`: 8 Cuadro-2 γ formulas incl. RSI15→γ=0.50, RSI5→γ=0.83; clamp at 1.
+- [x] 3.4 GREEN `src/stream/confidence.ts`.
+- [x] 3.5 RED `tests/stream/indicators/rsi.test.ts` + `macd.test.ts`: Wilder RSI14 + EMA12/26/9 MACD vs published reference vectors, explicit smoothing/seed cases.
+- [x] 3.6 GREEN `src/stream/indicators/rsi.ts`, `macd.ts`.
+- [x] 3.7 RED `tests/stream/indicators/sma.test.ts` + `bollinger.test.ts`: SMA20/50 + BB20±2σ vs reference vectors; SMA50=0 and Lsup=Linf guards.
+- [x] 3.8 GREEN `src/stream/indicators/sma.ts`, `bollinger.ts`.
+- [x] 3.9 RED `tests/stream/window.test.ts`: W(S,ω,β) per Cuadro1 in 1h-candle units (RSI 14/1, MACD 26/1, SMA 50/1, Bollinger 20/1); injected clock; content size=ω; cold start (<50 candles)→[]; §5 edge-effect documented as observed behavior.
+- [x] 3.10 GREEN `src/stream/window.ts` (S2R operator over quad stream; fixtures use hand-built N3 Store, no L1 dependency).
+  - **Post-hoc correction (bug fix, post-PR2)**: `src/stream/evidence.ts`'s `MACD_SPEC.omega` was corrected from the Cuadro-1 literal 26 to 50 — at omega=26 the MACD-line series degenerates to a single point, making histogram/sigma_H always 0 and macd_bullish/macd_bearish permanently unreachable. Documented as **deviation D5**; see `design.md`'s "Deviation D5" section and `docs/PRD.md`'s "Desvíos aprobados" table.
+- [x] 3.11 RED `tests/stream/evidence.test.ts`: R2S — active conditions→Evidence[] (0..8), non-monotonic auto-stop, provenance populated.
+- [x] 3.12 GREEN `src/stream/evidence.ts`: `extractEvidence(store, asset, now): Evidence[]` composing window+indicators+confidence+risk.
 
 ## Phase 4: L1 Semantic Ingestion (TDD)
 
-- [ ] 4.1 RED `tests/rdf/mapCandles.test.ts`: exact triples (`faf:event_{asset}_{kind}_{t}`, rdf:type PriceEvent, OHLCV predicates, xsd datatypes), Turtle snapshot.
-- [ ] 4.2 GREEN `src/rdf/ontology.ts`, `mapCandles.ts`, `store.ts` (N3.Store factory + Turtle writer).
-- [ ] 4.3 RED `tests/rdf/mapIndicators.test.ts`: IndicatorValue quads (rsiValue/macdHistogram/sma20/50/bollingerUpper/Lower), rdf:type disambiguation.
-- [ ] 4.4 GREEN `src/rdf/mapIndicators.ts`.
+- [x] 4.1 RED `tests/rdf/mapCandles.test.ts`: exact triples (`faf:event_{asset}_{kind}_{t}`, rdf:type PriceEvent, OHLCV predicates, xsd datatypes), Turtle snapshot.
+- [x] 4.2 GREEN `src/rdf/ontology.ts`, `mapCandles.ts`, `store.ts` (N3.Store factory + Turtle writer).
+- [x] 4.3 RED `tests/rdf/mapIndicators.test.ts`: IndicatorValue quads (rsiValue/macdHistogram/sma20/50/bollingerUpper/Lower), rdf:type disambiguation.
+- [x] 4.4 GREEN `src/rdf/mapIndicators.ts`.
 
 ## Phase 5: Binance Adapter (TDD)
 
-- [ ] 5.1 RED `tests/market/binance.test.ts` over recorded cassettes `tests/fixtures/binance/*.json` (OK, malformed, 429, empty; ≥50 candles/asset D4; cold start <50→insufficient-history flag; failed/delayed fetch→emit nothing, no error).
-- [ ] 5.2 GREEN `src/market/provider.ts` (MarketDataSource interface), `src/market/binance.ts` (BinanceHttpSource; URLs built only from `assets.ts` allowlist — satisfies T-2).
+- [x] 5.1 RED `tests/market/binance.test.ts` over recorded cassettes `tests/fixtures/binance/*.json` (OK, malformed, 429, empty; ≥50 candles/asset D4; cold start <50→insufficient-history flag; failed/delayed fetch→emit nothing, no error).
+- [x] 5.2 GREEN `src/market/provider.ts` (MarketDataSource interface), `src/market/binance.ts` (BinanceHttpSource; URLs built only from `assets.ts` allowlist — satisfies T-2).
 
 ## Phase 6: Cycle Orchestration & API Routes
 
