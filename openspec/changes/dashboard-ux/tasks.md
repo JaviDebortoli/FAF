@@ -111,15 +111,15 @@ Chain strategy: pending
 
 ## Phase 6: E2E Rewrite (PR4)
 
-- [ ] 6.1 Rewrite `tests/e2e/dashboard.spec.ts`: card grid renders a card only for actionable (BUY/SELL) assets, none for `NO_RECOMMENDATION`.
-- [ ] 6.2 Scenario: all-`NO_RECOMMENDATION` fixture → explicit empty state, not blank page.
-- [ ] 6.3 Scenario: direction filter narrows visible cards to BUY or SELL only.
-- [ ] 6.4 Scenario: opening a card's drill-down renders the 8/2/1 argument graph matching the asset's trace, with `data-state` fired/inactive partition correct.
-- [ ] 6.5 Scenario: no `GET /api/decisions/[asset]/narrative` request fires until a drill-down is opened (network assertion).
-- [ ] 6.6 Scenario: narrative disclaimer element present whenever narrative text is rendered (D7 clause 5).
-- [ ] 6.7 Scenario: narrative route stubbed to 503 → drill-down still renders graph+scores, narrative section shows "no disponible" (D7 clause 4, graceful degradation).
-- [ ] 6.8 Scenario: no narrative/graph `data-testid` present anywhere in the Tier 1 view (D7 clause 1).
-- [ ] 6.9 Remove obsolete assertions coupled to deleted `<table>` markup, `getByLabel('Asset filter')`, `'View trace'`, `'Argument trace'`.
+- [x] 6.1 Rewrite `tests/e2e/dashboard.spec.ts`: card grid renders a card only for actionable (BUY/SELL) assets, none for `NO_RECOMMENDATION`.
+- [x] 6.2 Scenario: all-`NO_RECOMMENDATION` fixture → explicit empty state, not blank page.
+- [x] 6.3 Scenario: direction filter narrows visible cards to BUY or SELL only.
+- [x] 6.4 Scenario: opening a card's drill-down renders the 8/2/1 argument graph matching the asset's trace, with `data-state` fired/inactive partition correct.
+- [x] 6.5 Scenario: no `GET /api/decisions/[asset]/narrative` request fires until a drill-down is opened (network assertion).
+- [x] 6.6 Scenario: narrative disclaimer element present whenever narrative text is rendered (D7 clause 5).
+- [x] 6.7 Scenario: narrative route stubbed to 503 → drill-down still renders graph+scores, narrative section shows "no disponible" (D7 clause 4, graceful degradation).
+- [x] 6.8 Scenario: no narrative/graph `data-testid` present anywhere in the Tier 1 view (D7 clause 1).
+- [x] 6.9 Remove obsolete assertions coupled to deleted `<table>` markup, `getByLabel('Asset filter')`, `'View trace'`, `'Argument trace'`.
 
 ## Implementation Order
 
