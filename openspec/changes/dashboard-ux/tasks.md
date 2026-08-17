@@ -101,13 +101,13 @@ Chain strategy: pending
 
 ## Phase 5: Tier 2 UI — Argument Graph, Drill-Down, Narrative Panel (PR3)
 
-- [ ] 5.1 RED `tests/dashboard/lib/graphLayout.test.ts`: all 8 leaves present at fixed `y=i*ROW_H` in `RULES` order regardless of fired set; AP/AN centroid columns; fired vs. non-fired partition by set-difference against `trace.evidences`; non-fired never carries ⟨γ,ρ⟩.
-- [ ] 5.2 GREEN `app/(dashboard)/lib/graphLayout.ts`: `layoutArgumentGraph(evidences)`, fixed `viewBox="0 0 720 380"`.
-- [ ] 5.3 Create `app/(dashboard)/components/ArgumentGraph.tsx`: `<svg role="img">` + `<title>/<desc>`, fired nodes solid/thesis-colored, non-fired dashed muted "no activada en este ciclo", `data-testid="graph-node-R{n}"` + `data-state="fired|inactive"`.
-- [ ] 5.4 Create `app/(dashboard)/components/ThesisScores.tsx`: renders `aggregated`/`net`/σ/θ tick from `lib/scores.ts` output; highlights side matching `decision.recommendation`.
-- [ ] 5.5 Create `app/(dashboard)/components/NarrativePanel.tsx`: client island, state machine `idle→loading→streaming→done|unavailable|failed`; reads `response.body.getReader()`+`TextDecoder`; visible "generado por IA" disclaimer, visually separated from deterministic scores; retry button only in `failed` states.
-- [ ] 5.6 Create `app/(dashboard)/components/DrilldownPanel.tsx`: dialog rendering graph+scores immediately from already-fetched `Decision`; mounts `NarrativePanel` lazily only on first open, never prefetched.
-- [ ] 5.7 Wire `OverviewClient.tsx`: clicking a `DecisionCard` opens `DrilldownPanel` for that asset.
+- [x] 5.1 RED `tests/dashboard/lib/graphLayout.test.ts`: all 8 leaves present at fixed `y=i*ROW_H` in `RULES` order regardless of fired set; AP/AN centroid columns; fired vs. non-fired partition by set-difference against `trace.evidences`; non-fired never carries ⟨γ,ρ⟩.
+- [x] 5.2 GREEN `app/(dashboard)/lib/graphLayout.ts`: `layoutArgumentGraph(evidences)`, fixed `viewBox="0 0 720 380"`.
+- [x] 5.3 Create `app/(dashboard)/components/ArgumentGraph.tsx`: `<svg role="img">` + `<title>/<desc>`, fired nodes solid/thesis-colored, non-fired dashed muted "no activada en este ciclo", `data-testid="graph-node-R{n}"` + `data-state="fired|inactive"`.
+- [x] 5.4 Create `app/(dashboard)/components/ThesisScores.tsx`: renders `aggregated`/`net`/σ/θ tick from `lib/scores.ts` output; highlights side matching `decision.recommendation`.
+- [x] 5.5 Create `app/(dashboard)/components/NarrativePanel.tsx`: client island, state machine `idle→loading→streaming→done|unavailable|failed`; reads `response.body.getReader()`+`TextDecoder`; visible "generado por IA" disclaimer, visually separated from deterministic scores; retry button only in `failed` states.
+- [x] 5.6 Create `app/(dashboard)/components/DrilldownPanel.tsx`: dialog rendering graph+scores immediately from already-fetched `Decision`; mounts `NarrativePanel` lazily only on first open, never prefetched.
+- [x] 5.7 Wire `OverviewClient.tsx`: clicking a `DecisionCard` opens `DrilldownPanel` for that asset.
 
 ## Phase 6: E2E Rewrite (PR4)
 

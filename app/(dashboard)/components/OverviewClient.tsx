@@ -5,6 +5,7 @@ import type { DecisionReport } from '@/src/domain/types';
 import { type Direction, selectActionable } from '../lib/select';
 import { DecisionCard } from './DecisionCard';
 import { DirectionFilter } from './DirectionFilter';
+import { DrilldownPanel } from './DrilldownPanel';
 import { EmptyState } from './EmptyState';
 
 /** UI polling cadence — distinct from `BETA_MS` (the backend cache TTL in
@@ -16,9 +17,12 @@ const POLL_INTERVAL_MS = 30_000;
 /**
  * design.md "Component Architecture" — the sole client island for Tier 1:
  * owns the `GET /api/decisions` fetch/poll, the direction filter, the
- * selected-asset state (Phase 5 wires this to `DrilldownPanel`; this phase
- * only needs `DecisionCard` to be clickable), and session-only "changed
- * since last poll" diff state (by `decision.t` per asset — never persisted).
+ * selected-asset state (wired to `DrilldownPanel` below — clicking a
+ * `DecisionCard` opens it for that asset), and session-only "changed since
+ * last poll" diff state (by `decision.t` per asset — never persisted).
+ * `DrilldownPanel` (and, transitively, `ArgumentGraph`/`NarrativePanel`) is
+ * mounted ONLY when `selectedDecision` is non-null — never as part of the
+ * Tier 1 card grid itself (D7 clause 1).
  */
 export function OverviewClient() {
   const [report, setReport] = useState<DecisionReport | null>(null);
@@ -81,6 +85,7 @@ export function OverviewClient() {
 
   const allActionable = selectActionable(report, 'ALL');
   const visible = selectActionable(report, direction);
+  const selectedDecision = selectedAsset ? (report.decisions.find((d) => d.asset === selectedAsset) ?? null) : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -106,6 +111,8 @@ export function OverviewClient() {
           ))}
         </div>
       )}
+
+      {selectedDecision && <DrilldownPanel decision={selectedDecision} onClose={() => setSelectedAsset(null)} />}
     </div>
   );
 }
