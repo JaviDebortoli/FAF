@@ -65,15 +65,15 @@ Chain strategy: pending
 
 ## Phase 2: Tier 1 UI — Card Grid, Filter, Empty State (PR1b)
 
-- [ ] 2.1 Create `app/(dashboard)/components/RecommendationBadge.tsx`: BUY/SELL badge, semantic color tokens.
-- [ ] 2.2 Create `app/(dashboard)/components/ScoreGauge.tsx`: thin mapper over `lib/gauge.ts` output to `<svg role="img">`.
-- [ ] 2.3 Create `app/(dashboard)/components/Sparkline.tsx`: thin mapper over `lib/sparkline.ts` output.
-- [ ] 2.4 Create `app/(dashboard)/components/DecisionCard.tsx`: composes badge + gauge + sparkline for one actionable asset; `data-testid="decision-card-{asset}"`.
-- [ ] 2.5 Create `app/(dashboard)/components/DirectionFilter.tsx`: BUY/SELL segmented control (no `NO_RECOMMENDATION` option).
-- [ ] 2.6 Create `app/(dashboard)/components/EmptyState.tsx`: two copies — "no active recommendations right now" (nothing actionable) vs. "no BUY recommendations right now" (filter excluded everything).
-- [ ] 2.7 Create `app/(dashboard)/components/OverviewClient.tsx`: client island — fetch/poll `GET /api/decisions`, owns direction filter + selected-asset state via `lib/select.ts`; session-only "changed since last poll" diff state.
-- [ ] 2.8 Rewrite `app/(dashboard)/page.tsx` as a Server Component: static chrome (title, thesis framing, footer) + `<OverviewClient/>`.
-- [ ] 2.9 Delete `app/(dashboard)/components/{DecisionTable,AssetFilter,ArgumentTrace}.tsx` (superseded).
+- [x] 2.1 Create `app/(dashboard)/components/RecommendationBadge.tsx`: BUY/SELL badge, semantic color tokens.
+- [x] 2.2 Create `app/(dashboard)/components/ScoreGauge.tsx`: thin mapper over `lib/gauge.ts` output to `<svg role="img">`.
+- [x] 2.3 Create `app/(dashboard)/components/Sparkline.tsx`: thin mapper over `lib/sparkline.ts` output.
+- [x] 2.4 Create `app/(dashboard)/components/DecisionCard.tsx`: composes badge + gauge + sparkline for one actionable asset; `data-testid="decision-card-{asset}"`.
+- [x] 2.5 Create `app/(dashboard)/components/DirectionFilter.tsx`: BUY/SELL segmented control (no `NO_RECOMMENDATION` option).
+- [x] 2.6 Create `app/(dashboard)/components/EmptyState.tsx`: two copies — "no active recommendations right now" (nothing actionable) vs. "no BUY recommendations right now" (filter excluded everything).
+- [x] 2.7 Create `app/(dashboard)/components/OverviewClient.tsx`: client island — fetch/poll `GET /api/decisions`, owns direction filter + selected-asset state via `lib/select.ts`; session-only "changed since last poll" diff state.
+- [x] 2.8 Rewrite `app/(dashboard)/page.tsx` as a Server Component: static chrome (title, thesis framing, footer) + `<OverviewClient/>`.
+- [x] 2.9 Delete `app/(dashboard)/components/{DecisionTable,AssetFilter,ArgumentTrace}.tsx` (superseded).
 
 ## Phase 3: Narrative Core Modules — Pure, No Network (PR2a)
 

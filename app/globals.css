@@ -14,6 +14,17 @@
   --color-sell: #f43f5e;
   --color-inactive: #52525b;
   --color-muted: #a1a1aa;
+  --color-threshold: #eab308;
+
+  /*
+   * Two-family type system (dashboard-ux Tier 1 design direction): a plain,
+   * restrained sans for labels/headings/prose and a monospace face for every
+   * numeric/data value (sigma, gamma, rho, prices, timestamps). The
+   * `--font-plex-*` variables are set by `next/font/google` on <html> in
+   * app/layout.tsx; the fallback stacks apply only until those load.
+   */
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, 'SFMono-Regular', monospace;
 }
 
 body {
