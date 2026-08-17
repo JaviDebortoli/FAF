@@ -90,14 +90,14 @@ Chain strategy: pending
 
 ## Phase 4: Narrative Route, Docs (PR2b)
 
-- [ ] 4.1 `package.json`: add `@anthropic-ai/sdk` dependency.
-- [ ] 4.2 RED `tests/narrative/client.test.ts` (mocked SDK): `Anthropic` client constructed inside call, not at module scope (T-5); thinking deltas discarded, only `text_delta` forwarded.
-- [ ] 4.3 GREEN `src/narrative/client.ts`.
-- [ ] 4.4 RED `tests/api/narrative.test.ts` (mocked `@anthropic-ai/sdk`), full failure table: disallowed symbol→400 `BAD_ASSET` no client constructed (T-3); no `Decision`→404 `NO_DECISION`; `NO_RECOMMENDATION`→409 `NOT_APPLICABLE` zero tokens (T-3); missing key→503 `NARRATIVE_DISABLED`; `RateLimitError`/`APIConnectionError`→503 `UPSTREAM_BUSY`; other `Anthropic.APIError`→502 `UPSTREAM_ERROR`; unknown throw→500 `INTERNAL`; rate-limit exceeded→429 `Retry-After` (T-3); repeated request same `(asset,t)`→cache hit, exactly one upstream call total (T-3); crafted body/query→byte-identical prompt (T-4); `APIError` embedding secret-shaped string not present in response body (T-5); mocked never-yielding stream aborts at 45s deadline, closes with `[NARRATIVE_INCOMPLETE]`, cache not written (T-6).
-- [ ] 4.5 RED `tests/api/decisions-invariance.test.ts`: `GET /api/decisions` output byte-identical with and without `ANTHROPIC_API_KEY` set (D7 clause 4).
-- [ ] 4.6 GREEN `app/api/decisions/[asset]/narrative/route.ts`: `runtime='nodejs'`, `dynamic='force-dynamic'`, `maxDuration=60`, awaited Promise `params`, streamed `text/plain`, `x-faf-narrative-source` header.
-- [ ] 4.7 `.env.example`: document `ANTHROPIC_API_KEY` + Anthropic console spend-cap note.
-- [ ] 4.8 `docs/PRD.md`: add D7 row to "Desvíos aprobados" table (spec delta already encodes D7; this task only updates the PRD doc).
+- [x] 4.1 `package.json`: add `@anthropic-ai/sdk` dependency.
+- [x] 4.2 RED `tests/narrative/client.test.ts` (mocked SDK): `Anthropic` client constructed inside call, not at module scope (T-5); thinking deltas discarded, only `text_delta` forwarded.
+- [x] 4.3 GREEN `src/narrative/client.ts`.
+- [x] 4.4 RED `tests/api/narrative.test.ts` (mocked `@anthropic-ai/sdk`), full failure table: disallowed symbol→400 `BAD_ASSET` no client constructed (T-3); no `Decision`→404 `NO_DECISION`; `NO_RECOMMENDATION`→409 `NOT_APPLICABLE` zero tokens (T-3); missing key→503 `NARRATIVE_DISABLED`; `RateLimitError`/`APIConnectionError`→503 `UPSTREAM_BUSY`; other `Anthropic.APIError`→502 `UPSTREAM_ERROR`; unknown throw→500 `INTERNAL`; rate-limit exceeded→429 `Retry-After` (T-3); repeated request same `(asset,t)`→cache hit, exactly one upstream call total (T-3); crafted body/query→byte-identical prompt (T-4); `APIError` embedding secret-shaped string not present in response body (T-5); mocked never-yielding stream aborts at 45s deadline, closes with `[NARRATIVE_INCOMPLETE]`, cache not written (T-6).
+- [x] 4.5 RED `tests/api/decisions-invariance.test.ts`: `GET /api/decisions` output byte-identical with and without `ANTHROPIC_API_KEY` set (D7 clause 4).
+- [x] 4.6 GREEN `app/api/decisions/[asset]/narrative/route.ts`: `runtime='nodejs'`, `dynamic='force-dynamic'`, `maxDuration=60`, awaited Promise `params`, streamed `text/plain`, `x-faf-narrative-source` header.
+- [x] 4.7 `.env.example`: document `ANTHROPIC_API_KEY` + Anthropic console spend-cap note.
+- [x] 4.8 `docs/PRD.md`: add D7 row to "Desvíos aprobados" table (spec delta already encodes D7; this task only updates the PRD doc).
 
 ## Phase 5: Tier 2 UI — Argument Graph, Drill-Down, Narrative Panel (PR3)
 
