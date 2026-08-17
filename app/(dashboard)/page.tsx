@@ -1,67 +1,30 @@
-'use client';
-
-import { useEffect, useMemo, useState } from 'react';
-import type { Decision, DecisionReport } from '@/src/domain/types';
-import { DecisionTable } from './components/DecisionTable';
-import { ArgumentTrace } from './components/ArgumentTrace';
-import { AssetFilter } from './components/AssetFilter';
+import { OverviewClient } from './components/OverviewClient';
 
 /**
- * Decision dashboard (design.md decision-dashboard spec, task 7.1): minimal
- * tabular decision list + multi-asset filter + argument-trace detail table.
- * Deliberately NO narrative text and NO graph visualization — both deferred
- * to v2 per approved deviation D3. Fetches from GET /api/decisions.
+ * design.md "Component Architecture" — Server Component: static chrome
+ * (title, thesis framing, footer/AI disclaimer context) rendered server-side
+ * so it is present even if hydration fails, plus the `OverviewClient` client
+ * island that owns the fetch/poll/filter/selection state. Tier 1 only: zero
+ * LLM text, zero node-edge graph (requirement "LLM narrative and graph
+ * visualization confined to Tier 2").
  */
 export default function DashboardPage() {
-  const [report, setReport] = useState<DecisionReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [assetFilter, setAssetFilter] = useState<string | 'ALL'>('ALL');
-  const [selected, setSelected] = useState<Decision | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        const response = await fetch('/api/decisions');
-        if (!response.ok) {
-          throw new Error(`GET /api/decisions failed with status ${response.status}`);
-        }
-        const data = (await response.json()) as DecisionReport;
-        if (!cancelled) {
-          setReport(data);
-          setError(null);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Unknown error loading decisions');
-        }
-      }
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const decisions = useMemo(() => {
-    const all = report?.decisions ?? [];
-    if (assetFilter === 'ALL') return all;
-    return all.filter((d) => d.asset === assetFilter);
-  }, [report, assetFilter]);
-
   return (
-    <main>
-      <h1>FAF Platform — Decision Dashboard</h1>
+    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 py-10">
+      <header className="flex flex-col gap-2 border-b border-zinc-800 pb-6">
+        <span className="font-mono text-xs uppercase tracking-[0.3em] text-muted">FAF · Panel de decisiones</span>
+        <h1 className="text-2xl font-semibold text-zinc-50">Recomendaciones activas</h1>
+        <p className="max-w-2xl text-sm text-zinc-400">
+          Cada tarjeta muestra una recomendación BUY/SELL derivada de forma determinística por el
+          framework argumentativo. Esta vista no contiene texto generado por IA.
+        </p>
+      </header>
 
-      {error && <p role="alert">{error}</p>}
+      <OverviewClient />
 
-      <AssetFilter selected={assetFilter} onChange={setAssetFilter} />
-
-      <DecisionTable decisions={decisions} selectedAsset={selected?.asset ?? null} onSelect={setSelected} />
-
-      {selected && <ArgumentTrace decision={selected} />}
+      <footer className="border-t border-zinc-800 pt-6 font-mono text-xs text-muted">
+        Trabajo de tesis — FAF Platform. σ, γ, ρ computados por el motor de decisión determinístico; θ = 0.67.
+      </footer>
     </main>
   );
 }
