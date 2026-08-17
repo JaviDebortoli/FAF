@@ -194,8 +194,11 @@ No live-n8n harness exists in this repo. Split is explicit:
    `genericAuthType === "httpHeaderAuth"`, top-level `credentials.httpHeaderAuth` exists with only
    `id`/`name` keys, `url` is a string not starting with `=` and containing
    `REPLACE_WITH_YOUR_DEPLOYED_APP_URL`.
-10. The substring `$env` appears **nowhere** in the file; no `headerParameters` entry named
-    `x-faf-shared-secret` remains.
+10. No `$env.FAF_CYCLE_SHARED_SECRET` or `$env.FAF_APP_BASE_URL` **expression** remains anywhere in the
+    file (i.e. no `={{ $env... }}` construct), and no `headerParameters` entry named
+    `x-faf-shared-secret` remains. (Explanatory prose in a node's `notes` field is allowed to *mention*
+    `$env` when describing why it's unusable on this plan — A10 checks for the expression construct,
+    not the literal 4-character substring, so this doesn't conflict with `post-cycle`'s own `notes` text.)
 
 **Manual (M1–M5)** — named steps for the user; M1–M4 gate "really done", M5 is the empirical check of
 the one Medium-confidence claim above:
