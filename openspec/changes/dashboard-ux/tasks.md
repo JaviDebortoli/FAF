@@ -77,16 +77,16 @@ Chain strategy: pending
 
 ## Phase 3: Narrative Core Modules — Pure, No Network (PR2a)
 
-- [ ] 3.1 RED `tests/narrative/facts.test.ts`: `buildNarrativeFacts(decision)` snapshot excludes `trace.turtle`/`trace.candles`/any unlisted key (T-4); read-only projection proof, no mutation of input `Decision` (D7 clause 2/6).
-- [ ] 3.2 GREEN `src/narrative/facts.ts`: `NarrativeFacts`/`ThesisFacts` whitelist projection.
-- [ ] 3.3 RED `tests/narrative/staticImport.test.ts`: static-import assertion that no module under `src/{rdf,stream,laf,decision,cycle}/` imports `src/narrative/*` (D7 clause 6).
-- [ ] 3.4 GREEN: add the assertion utility if needed (no production code — invariant already holds by construction).
-- [ ] 3.5 RED `tests/narrative/prompt.test.ts`: system-prompt golden snapshot (static, zero interpolation); `buildUserMessage(facts)` embeds only whitelisted fields as JSON.
-- [ ] 3.6 GREEN `src/narrative/prompt.ts`: `NARRATIVE_SYSTEM_PROMPT` constant + user-message builder.
-- [ ] 3.7 RED `tests/narrative/cache.test.ts`: key `` `${asset}:${decision.t}` ``, TTL `BETA_MS`, 16-entry bounded with oldest-eviction, only clean completions stored, new `t` invalidates stale entry.
-- [ ] 3.8 GREEN `src/narrative/cache.ts` (mirrors `src/cycle/latest.ts` shape).
-- [ ] 3.9 RED `tests/narrative/rateLimit.test.ts`: fixed-window 10 req/60s per client key; N+1 in window → deny; hourly per-instance circuit breaker; window-boundary edge cases.
-- [ ] 3.10 GREEN `src/narrative/rateLimit.ts`.
+- [x] 3.1 RED `tests/narrative/facts.test.ts`: `buildNarrativeFacts(decision)` snapshot excludes `trace.turtle`/`trace.candles`/any unlisted key (T-4); read-only projection proof, no mutation of input `Decision` (D7 clause 2/6).
+- [x] 3.2 GREEN `src/narrative/facts.ts`: `NarrativeFacts`/`ThesisFacts` whitelist projection.
+- [x] 3.3 RED `tests/narrative/staticImport.test.ts`: static-import assertion that no module under `src/{rdf,stream,laf,decision,cycle}/` imports `src/narrative/*` (D7 clause 6).
+- [x] 3.4 GREEN: add the assertion utility if needed (no production code — invariant already holds by construction).
+- [x] 3.5 RED `tests/narrative/prompt.test.ts`: system-prompt golden snapshot (static, zero interpolation); `buildUserMessage(facts)` embeds only whitelisted fields as JSON.
+- [x] 3.6 GREEN `src/narrative/prompt.ts`: `NARRATIVE_SYSTEM_PROMPT` constant + user-message builder.
+- [x] 3.7 RED `tests/narrative/cache.test.ts`: key `` `${asset}:${decision.t}` ``, TTL `BETA_MS`, 16-entry bounded with oldest-eviction, only clean completions stored, new `t` invalidates stale entry.
+- [x] 3.8 GREEN `src/narrative/cache.ts` (mirrors `src/cycle/latest.ts` shape).
+- [x] 3.9 RED `tests/narrative/rateLimit.test.ts`: fixed-window 10 req/60s per client key; N+1 in window → deny; hourly per-instance circuit breaker; window-boundary edge cases.
+- [x] 3.10 GREEN `src/narrative/rateLimit.ts`.
 
 ## Phase 4: Narrative Route, Docs (PR2b)
 
