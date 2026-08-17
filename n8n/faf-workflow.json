@@ -20,116 +20,64 @@
       }
     },
     {
-      "id": "fetch-klines-btc",
-      "name": "Fetch Klines - BTCUSDT",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [220, 140],
-      "onError": "continueErrorOutput",
-      "notes": "Raw fetch only (D2) - one HTTP Request node per allowlisted asset (src/market/assets.ts), limit=50 to match the system's uniform per-cycle window (see design.md 'Why 50'). Feeds into a per-branch Set node (below) that hardcodes this branch's symbol, so the Aggregate node never has to infer it from item order. onError routes a Binance failure/rate-limit to this node's dedicated ERROR output pin (main[1]), left intentionally unconnected. main[0] then yields 0 items for that asset and the other assets still reach /api/cycle — mirroring runCycle's 'skip a zero-candle asset, don't error' semantics.",
+      "id": "symbols-list",
+      "name": "Symbols",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [90, 300],
+      "notes": "Single source of this workflow's asset list. Emits one item per symbol; every downstream node runs once per item, which is why the pipeline needs no per-asset nodes and no Merge fan-in. DUPLICATION: this array mirrors ASSET_ALLOWLIST in src/market/assets.ts - n8n cannot import TypeScript and syncing via an endpoint was explicitly deferred (openspec/changes/n8n-dynamic-asset-list/proposal.md, Out of Scope). Edit one, edit the other; /api/cycle rejects unknown symbols with a 400 via isAllowedAsset(), so drift fails loud. Adding an asset also requires raising ASSET_ALLOWLIST/MAX_ASSETS app-side. DO NOT RENAME this node: 'Set Symbol' recovers each item's symbol through $('Symbols').",
       "parameters": {
-        "method": "GET",
-        "url": "https://api.binance.com/api/v3/klines",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "symbol", "value": "BTCUSDT" },
-            { "name": "interval", "value": "1h" },
-            { "name": "limit", "value": "50" }
-          ]
-        },
-        "options": {}
+        "language": "javaScript",
+        "jsCode": "// Emits one item per allowlisted asset. Adding an asset = ONE array entry\n// here; node count and wiring never change (that is the point of this shape).\n//\n// DUPLICATION WARNING: this list mirrors ASSET_ALLOWLIST in\n// src/market/assets.ts. If you edit one, edit the other - /api/cycle rejects\n// unknown symbols with a 400 via isAllowedAsset(), so drift fails loud, not\n// silently. Syncing the two automatically is deliberately out of scope\n// (openspec/changes/n8n-dynamic-asset-list/proposal.md).\nconst SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];\n\n// pairedItem is stated explicitly: every symbol item derives from the single\n// Schedule Trigger item. This keeps n8n's item-linking chain complete for the\n// downstream $('Symbols').item back-reference in 'Set Symbol'.\nreturn SYMBOLS.map((symbol) => ({ json: { symbol }, pairedItem: { item: 0 } }));"
       }
     },
     {
-      "id": "fetch-klines-eth",
-      "name": "Fetch Klines - ETHUSDT",
+      "id": "fetch-klines",
+      "name": "Fetch Klines",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [220, 300],
       "onError": "continueErrorOutput",
-      "notes": "Raw fetch only (D2) - one HTTP Request node per allowlisted asset (src/market/assets.ts), limit=50 to match the system's uniform per-cycle window (see design.md 'Why 50'). Feeds into a per-branch Set node (below) that hardcodes this branch's symbol, so the Aggregate node never has to infer it from item order. onError routes a Binance failure/rate-limit to this node's dedicated ERROR output pin (main[1]), left intentionally unconnected. main[0] then yields 0 items for that asset and the other assets still reach /api/cycle — mirroring runCycle's 'skip a zero-candle asset, don't error' semantics.",
+      "notes": "Raw fetch only (D2). ONE node for every asset: n8n runs it once per input item, so the 'symbol' query value is the per-item expression {{ $json.symbol }} instead of a literal - adding an asset needs no new node. limit=50 matches the system's uniform per-cycle window (see faf-platform design.md 'Why 50'). onError routes a PER-ITEM Binance failure/rate-limit to this node's dedicated ERROR output pin (main[1]), left intentionally unconnected: n8n catches the failure for that item only and continues with the next, so main[0] simply yields no item for that asset while the others still reach /api/cycle - mirroring runCycle's 'skip a zero-candle asset, don't error' semantics. Batching is future-proofing only: at 3 items the whole list is one batch, so the 1000ms interval (which applies BETWEEN batches) never fires; the first throttle would appear at 51 symbols.",
       "parameters": {
         "method": "GET",
         "url": "https://api.binance.com/api/v3/klines",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "symbol", "value": "ETHUSDT" },
+            { "name": "symbol", "value": "={{ $json.symbol }}" },
             { "name": "interval", "value": "1h" },
             { "name": "limit", "value": "50" }
           ]
         },
-        "options": {}
-      }
-    },
-    {
-      "id": "fetch-klines-sol",
-      "name": "Fetch Klines - SOLUSDT",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [220, 460],
-      "onError": "continueErrorOutput",
-      "notes": "Raw fetch only (D2) - one HTTP Request node per allowlisted asset (src/market/assets.ts), limit=50 to match the system's uniform per-cycle window (see design.md 'Why 50'). Feeds into a per-branch Set node (below) that hardcodes this branch's symbol, so the Aggregate node never has to infer it from item order. onError routes a Binance failure/rate-limit to this node's dedicated ERROR output pin (main[1]), left intentionally unconnected. main[0] then yields 0 items for that asset and the other assets still reach /api/cycle — mirroring runCycle's 'skip a zero-candle asset, don't error' semantics.",
-      "parameters": {
-        "method": "GET",
-        "url": "https://api.binance.com/api/v3/klines",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "symbol", "value": "SOLUSDT" },
-            { "name": "interval", "value": "1h" },
-            { "name": "limit", "value": "50" }
-          ]
-        },
-        "options": {}
-      }
-    },
-    {
-      "id": "set-symbol-btc",
-      "name": "Set Symbol - BTCUSDT",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [350, 140],
-      "notes": "Attaches this branch's literal symbol plus the raw klines array under a stable 'klines' field, so the Aggregate Code node downstream never needs to infer the asset from item order (fixes the previous SYMBOLS[i] positional fragility).",
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "set-symbol-btc-field",
-              "name": "symbol",
-              "value": "BTCUSDT",
-              "type": "string"
-            },
-            {
-              "id": "set-klines-btc-field",
-              "name": "klines",
-              "value": "={{ $json.body ?? $json }}",
-              "type": "array"
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 50,
+              "batchInterval": 1000
             }
-          ]
-        },
-        "options": {}
+          }
+        }
       }
     },
     {
-      "id": "set-symbol-eth",
-      "name": "Set Symbol - ETHUSDT",
+      "id": "set-symbol",
+      "name": "Set Symbol",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [350, 300],
-      "notes": "Attaches this branch's literal symbol plus the raw klines array under a stable 'klines' field, so the Aggregate Code node downstream never needs to infer the asset from item order (fixes the previous SYMBOLS[i] positional fragility).",
+      "notes": "Attaches this item's symbol plus the raw klines array under a stable 'klines' field, so the Aggregate Code node downstream never infers the asset from item order. The symbol CANNOT be read from $json here: the HTTP Request node upstream replaced each item's json with Binance's response. It is recovered by n8n item linking from the 'Symbols' node ($('Symbols').item), which resolves per item via pairedItem - so renaming 'Symbols' breaks this expression, and a mispairing would fail loudly rather than silently mislabel (see the M3 check in n8n/POST_IMPORT_STEPS.md).",
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "set-symbol-eth-field",
+              "id": "set-symbol-field",
               "name": "symbol",
-              "value": "ETHUSDT",
+              "value": "={{ $('Symbols').item.json.symbol }}",
               "type": "string"
             },
             {
-              "id": "set-klines-eth-field",
+              "id": "set-klines-field",
               "name": "klines",
               "value": "={{ $json.body ?? $json }}",
               "type": "array"
@@ -137,45 +85,6 @@
           ]
         },
         "options": {}
-      }
-    },
-    {
-      "id": "set-symbol-sol",
-      "name": "Set Symbol - SOLUSDT",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [350, 460],
-      "notes": "Attaches this branch's literal symbol plus the raw klines array under a stable 'klines' field, so the Aggregate Code node downstream never needs to infer the asset from item order (fixes the previous SYMBOLS[i] positional fragility).",
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "set-symbol-sol-field",
-              "name": "symbol",
-              "value": "SOLUSDT",
-              "type": "string"
-            },
-            {
-              "id": "set-klines-sol-field",
-              "name": "klines",
-              "value": "={{ $json.body ?? $json }}",
-              "type": "array"
-            }
-          ]
-        },
-        "options": {}
-      }
-    },
-    {
-      "id": "merge-assets",
-      "name": "Merge Assets",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3,
-      "position": [480, 300],
-      "notes": "Fan-in for the 3 per-asset branches. Without this, all 3 Set Symbol nodes fed the SAME Aggregate input and n8n's bare `items` global resolved to branch 0 only, silently dropping 2 of 3 assets every cycle. Append mode = flat concat of inputs 0..2 (Merge v3 mode/append.ts). A branch that produced 0 items (its Fetch node routed to its error output) contributes nothing and does not block the others.",
-      "parameters": {
-        "mode": "append",
-        "numberInputs": 3
       }
     },
     {
@@ -220,27 +129,17 @@
   ],
   "connections": {
     "Schedule Trigger (1-5min)": {
-      "main": [
-        [
-          { "node": "Fetch Klines - BTCUSDT", "type": "main", "index": 0 },
-          { "node": "Fetch Klines - ETHUSDT", "type": "main", "index": 0 },
-          { "node": "Fetch Klines - SOLUSDT", "type": "main", "index": 0 }
-        ]
-      ]
+      "main": [[{ "node": "Symbols", "type": "main", "index": 0 }]]
     },
-    "Fetch Klines - BTCUSDT": {
-      "main": [[{ "node": "Set Symbol - BTCUSDT", "type": "main", "index": 0 }]]
+    "Symbols": {
+      "main": [[{ "node": "Fetch Klines", "type": "main", "index": 0 }]]
     },
-    "Fetch Klines - ETHUSDT": {
-      "main": [[{ "node": "Set Symbol - ETHUSDT", "type": "main", "index": 0 }]]
+    "Fetch Klines": {
+      "main": [[{ "node": "Set Symbol", "type": "main", "index": 0 }]]
     },
-    "Fetch Klines - SOLUSDT": {
-      "main": [[{ "node": "Set Symbol - SOLUSDT", "type": "main", "index": 0 }]]
+    "Set Symbol": {
+      "main": [[{ "node": "Aggregate (build /api/cycle payload)", "type": "main", "index": 0 }]]
     },
-    "Set Symbol - BTCUSDT": { "main": [[{ "node": "Merge Assets", "type": "main", "index": 0 }]] },
-    "Set Symbol - ETHUSDT": { "main": [[{ "node": "Merge Assets", "type": "main", "index": 1 }]] },
-    "Set Symbol - SOLUSDT": { "main": [[{ "node": "Merge Assets", "type": "main", "index": 2 }]] },
-    "Merge Assets": { "main": [[{ "node": "Aggregate (build /api/cycle payload)", "type": "main", "index": 0 }]] },
     "Aggregate (build /api/cycle payload)": {
       "main": [[{ "node": "POST /api/cycle", "type": "main", "index": 0 }]]
     }
