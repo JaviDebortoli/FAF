@@ -109,18 +109,18 @@ describe('BinanceHttpSource.fetchCandles', () => {
     expect(result).toBeNull();
   });
 
-  it('T-2: never calls fetch for an asset outside the allowlist', async () => {
+  it('T-2: never calls fetch for a malformed symbol', async () => {
     const fetchSpy = vi.fn(() => jsonResponse(klinesOk));
     vi.stubGlobal('fetch', fetchSpy);
     const source = new BinanceHttpSource();
 
-    const result = await source.fetchCandles('DOGEUSDT');
+    const result = await source.fetchCandles('DOGE-USDT');
 
     expect(result).toBeNull();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('T-2: builds the request URL only from the allowlisted symbol and the fixed Binance base URL', async () => {
+  it('T-2: builds the request URL only from the well-formed symbol and the fixed Binance base URL', async () => {
     const fetchSpy = vi.fn(() => jsonResponse(klinesOk));
     vi.stubGlobal('fetch', fetchSpy);
     const source = new BinanceHttpSource();

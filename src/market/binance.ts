@@ -1,5 +1,5 @@
 import type { Asset, Candle } from '@/src/domain/types';
-import { BINANCE_KLINES_BASE_URL, isAllowedAsset } from './assets';
+import { BINANCE_KLINES_BASE_URL, isWellFormedAsset } from './assets';
 import { MIN_CANDLES } from './provider';
 import type { FetchResult, MarketDataSource } from './provider';
 
@@ -25,10 +25,11 @@ function parseKline(raw: unknown): Candle | null {
 
 /**
  * Binance klines adapter (semantic-ingestion spec: no API key required).
- * T-2 (design.md Threat Matrix): the request URL is built ONLY from the
- * `src/market/assets.ts` allowlist — `asset` is checked with
- * `isAllowedAsset` before any network call, never interpolated from
- * unchecked request input.
+ * T-2 (design.md Threat Matrix): the request URL is built ONLY from
+ * `BINANCE_KLINES_BASE_URL` and a symbol that has already passed
+ * `isWellFormedAsset` — the anchored `^[A-Z0-9]{2,20}USDT$` pattern admits
+ * no `/`, `?`, `:`, `.` or whitespace, so no path/host/query injection is
+ * reachable, never interpolated from unchecked request input.
  *
  * Failed/delayed fetch, malformed body, and rate-limit (429) all resolve to
  * `null` — "emit nothing for that cycle, no error" (FAF §2.1, non-monotonic
@@ -36,7 +37,7 @@ function parseKline(raw: unknown): Candle | null {
  */
 export class BinanceHttpSource implements MarketDataSource {
   async fetchCandles(asset: Asset): Promise<FetchResult | null> {
-    if (!isAllowedAsset(asset)) {
+    if (!isWellFormedAsset(asset)) {
       return null;
     }
 

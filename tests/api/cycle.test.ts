@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Threat matrix (design.md): T-1 untrusted inbound payload (schema + allowlist
-// validation), T-2 shared-secret auth on the public inbound endpoint. Both RED
-// tests below assert 400/401/403 WITHOUT `runCycle` ever being invoked.
+// Threat matrix (design.md): T-1 untrusted inbound payload (schema + format
+// validation via isWellFormedAsset, no enumerated list), T-2 shared-secret
+// auth on the public inbound endpoint. Both RED tests below assert
+// 400/401/403 WITHOUT `runCycle` ever being invoked.
 
 const runCycleMock = vi.fn((..._args: unknown[]) => ({
   cycleId: 'cycle_test',
@@ -70,10 +71,10 @@ describe('POST /api/cycle — T-1 payload validation', () => {
     expect(runCycleMock).not.toHaveBeenCalled();
   });
 
-  it('rejects a symbol outside the allowlist with 400 and never calls runCycle', async () => {
+  it('rejects a malformed symbol (eth-usdt) with 400 and never calls runCycle', async () => {
     const { POST } = await import('@/app/api/cycle/route');
     const request = makeRequest(
-      { assets: [{ symbol: 'DOGEUSDT', klines: [] }] },
+      { assets: [{ symbol: 'eth-usdt', klines: [] }] },
       { [SHARED_SECRET_HEADER]: SECRET },
     );
 
@@ -148,11 +149,50 @@ describe('POST /api/cycle — happy paths', () => {
     expect(body.cycleId).toBe('cycle_test');
   });
 
-  it('accepts an empty body, pulls candles server-side for every allowlisted asset, and calls runCycle once', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.resolve(new Response(JSON.stringify([]), { status: 200 }))),
+  it('accepts a well-formed, previously-unseen symbol (ADAUSDT) and calls runCycle once — no enumerated list gates it', async () => {
+    const { POST } = await import('@/app/api/cycle/route');
+    const request = makeRequest(
+      { assets: [{ symbol: 'ADAUSDT', klines: [] }] },
+      { [SHARED_SECRET_HEADER]: SECRET },
     );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(200);
+    expect(runCycleMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts a payload with exactly MAX_ASSETS (25) well-formed symbols', async () => {
+    const { POST, MAX_ASSETS } = await import('@/app/api/cycle/route');
+    const assets = Array.from({ length: MAX_ASSETS }, (_, i) => ({
+      symbol: `ASSET${i}USDT`,
+      klines: [],
+    }));
+    const request = makeRequest({ assets }, { [SHARED_SECRET_HEADER]: SECRET });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(200);
+    expect(runCycleMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a payload with MAX_ASSETS + 1 (26) well-formed symbols with 400 and never calls runCycle', async () => {
+    const { POST, MAX_ASSETS } = await import('@/app/api/cycle/route');
+    const assets = Array.from({ length: MAX_ASSETS + 1 }, (_, i) => ({
+      symbol: `ASSET${i}USDT`,
+      klines: [],
+    }));
+    const request = makeRequest({ assets }, { [SHARED_SECRET_HEADER]: SECRET });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    expect(runCycleMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects an empty body with 400, never calls runCycle, never calls fetch (push-only ingestion)', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
     const { POST } = await import('@/app/api/cycle/route');
     const request = new Request('http://localhost/api/cycle', {
       method: 'POST',
@@ -161,13 +201,8 @@ describe('POST /api/cycle — happy paths', () => {
 
     const response = await POST(request);
 
-    expect(response.status).toBe(200);
-    expect(runCycleMock).toHaveBeenCalledTimes(1);
-    const [assetsArg] = runCycleMock.mock.calls[0]!;
-    expect((assetsArg as Array<{ asset: string }>).map((a) => a.asset).sort()).toEqual([
-      'BTCUSDT',
-      'ETHUSDT',
-      'SOLUSDT',
-    ]);
+    expect(response.status).toBe(400);
+    expect(runCycleMock).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
