@@ -11,10 +11,10 @@ dag:
   specs: done (decision-dashboard modified, decision-narrative added — 22 scenarios)
   design: done (component architecture, narrative endpoint contract, SVG graph layout, threat-matrix addendum, Tailwind v4 setup, deviation D7 formalized)
   tasks: done (55 tasks, 6 phases/6 work units, ~2900-3200 lines forecast)
-  apply: pending
-  verify: pending
+  apply: done (55/55 tasks across 6 work units: PR1a, PR1b, PR2a, PR2b, PR3, PR4 — all committed on stacked branches, none pushed yet)
+  verify: done (PASS — 0 CRITICAL, 0 WARNING, 2 SUGGESTION; 204/204 vitest, 10/10 playwright, tsc clean, independently re-run)
   archive: pending
-next_recommended: sdd-apply (PR1a: Tailwind v4 + Tier 1 pure lib)
+next_recommended: sdd-archive
 delivery:
   strategy: ask-on-risk
   chain_strategy: stacked-to-main
