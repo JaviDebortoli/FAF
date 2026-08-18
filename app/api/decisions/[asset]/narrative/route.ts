@@ -1,9 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { Decision } from '@/src/domain/types';
-import { runCycle } from '@/src/cycle/runCycle';
-import { pullAllAssets } from '@/src/cycle/pullAssets';
+import { isWellFormedAsset } from '@/src/market/assets';
 import * as cycleCache from '@/src/cycle/latest';
-import { BETA_MS } from '@/src/cycle/constants';
 import { buildNarrativeFacts } from '@/src/narrative/facts';
 import { streamNarrative } from '@/src/narrative/client';
 import * as narrativeCache from '@/src/narrative/cache';
@@ -30,22 +27,6 @@ const STREAM_DEADLINE_MS = 45_000;
 
 const INCOMPLETE_MARKER = '\n\n[NARRATIVE_INCOMPLETE]';
 
-/**
- * TEMPORARY compatibility shim (dynamic-asset-count Phase 1): the old
- * `AllowedAsset`/`isAllowedAsset` exports were removed from
- * `src/market/assets.ts` in this change's Phase 1 (ingestion validation
- * boundary), but this route's own migration to `isWellFormedAsset` (and
- * deletion of `getDecisionForAsset` below) is deferred to Phase 2b (task
- * 2b.2). This inlines the exact same 3-symbol membership check the removed
- * exports provided, preserving identical behavior — zero functional change
- * — until Phase 2b replaces it with the format-based gate.
- */
-const NARRATIVE_ALLOWLIST = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'] as const;
-type AllowedAsset = (typeof NARRATIVE_ALLOWLIST)[number];
-function isAllowedAsset(asset: string): asset is AllowedAsset {
-  return (NARRATIVE_ALLOWLIST as readonly string[]).includes(asset);
-}
-
 type ErrorCode =
   | 'BAD_ASSET'
   | 'NO_DECISION'
@@ -58,28 +39,6 @@ type ErrorCode =
 
 function jsonError(status: number, code: ErrorCode, message: string, headers?: Record<string, string>): Response {
   return Response.json({ error: message, code }, { status, headers });
-}
-
-/**
- * design.md sequence diagram: `getForAsset(asset) or pull+runCycle+put`,
- * the same data-acquisition path `GET /api/decisions` uses — the narrative
- * is grounded in server-computed data by construction (T-4: the client
- * never supplies the Decision). If a report is already cached (fresh) but
- * simply does not contain this asset (e.g. a zero-candle fetch that cycle),
- * that is treated as a genuine "no Decision" rather than triggering another
- * recompute — mirrors `src/cycle/latest.ts#getForAsset`'s own semantics.
- */
-async function getDecisionForAsset(asset: AllowedAsset): Promise<Decision | null> {
-  const cachedDecision = cycleCache.getForAsset(asset);
-  if (cachedDecision) return cachedDecision;
-
-  const cachedReport = cycleCache.get();
-  if (cachedReport) return null;
-
-  const assets = await pullAllAssets();
-  const report = runCycle(assets);
-  cycleCache.put(report, BETA_MS);
-  return report.decisions.find((d) => d.asset === asset) ?? null;
 }
 
 /** T-3: rate-limit client key, taken from the standard forwarded-for header. */
@@ -200,13 +159,17 @@ function textResponse(text: string, source: 'cache' | 'llm'): Response {
 /**
  * Next 15: the dynamic segment is a Promise and must be awaited. The route
  * ignores the request body and query string entirely (T-4) — the only
- * input is the `[asset]` path segment, validated against the allowlist.
+ * input is the `[asset]` path segment, gated by format (dynamic-asset-count:
+ * push-only ingestion, no enumerated allowlist). Push-only: a cache miss
+ * (nothing pushed yet) and a cached report that simply lacks this asset are
+ * the same "no Decision" condition — `cycleCache.getForAsset` already
+ * returns `null` for both, so there is no separate recompute fallback.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ asset: string }> }): Promise<Response> {
   const { asset } = await params;
 
-  if (!isAllowedAsset(asset)) {
-    return jsonError(400, 'BAD_ASSET', `Unknown or disallowed symbol: ${asset}`);
+  if (!isWellFormedAsset(asset)) {
+    return jsonError(400, 'BAD_ASSET', 'Malformed asset symbol');
   }
 
   const rl = rateLimit.allow(clientKeyFor(request));
@@ -216,9 +179,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ asse
     });
   }
 
-  const decision = await getDecisionForAsset(asset);
+  const decision = cycleCache.getForAsset(asset);
   if (!decision) {
-    return jsonError(404, 'NO_DECISION', `No decision available for ${asset} this cycle`);
+    return jsonError(404, 'NO_DECISION', 'No decision available for this asset');
   }
 
   if (decision.recommendation === 'NO_RECOMMENDATION') {

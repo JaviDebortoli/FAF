@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as cycleCache from '@/src/cycle/latest';
 import * as narrativeCache from '@/src/narrative/cache';
 import * as rateLimit from '@/src/narrative/rateLimit';
+import { seedCycleCache } from '../helpers/seedCycleCache';
 import type { Argument, Decision, DecisionReport, Evidence, Label, ThesisState } from '@/src/domain/types';
 
 // design.md "Narrative Endpoint Contract" + Threat Matrix T-3/T-4/T-5/T-6:
@@ -101,8 +102,12 @@ function buildReport(decisions: Decision[]): DecisionReport {
   return { cycleId: 'cycle_test', computedAt: T, decisions };
 }
 
+// Delegates to the shared seeding seam (tests/helpers/seedCycleCache.ts, PR2a) —
+// this file keeps its own buildDecision/buildReport (its Decision fixtures carry
+// suite-specific evidence/argument shapes the shared helper's defaults don't need),
+// but the actual cache-write mechanics are the shared `seedCycleCache` wrapper.
 function primeReport(decisions: Decision[]): void {
-  cycleCache.put(buildReport(decisions), 60_000);
+  seedCycleCache(buildReport(decisions), 60_000);
 }
 
 function makeRequest(url = `http://localhost/api/decisions/${ASSET}/narrative`, headers: Record<string, string> = {}): Request {
@@ -132,15 +137,30 @@ afterEach(() => {
 });
 
 describe('GET /api/decisions/[asset]/narrative — failure table', () => {
-  it('disallowed symbol -> 400 BAD_ASSET, no Anthropic client constructed (T-3)', async () => {
+  it('malformed symbol -> 400 BAD_ASSET, no Anthropic client constructed (T-3)', async () => {
     const { GET } = await import('@/app/api/decisions/[asset]/narrative/route');
 
-    const response = await GET(makeRequest('http://localhost/x'), paramsFor('DOGEUSDT'));
+    const response = await GET(makeRequest('http://localhost/x'), paramsFor('DOGE-USDT'));
     const body = await response.json();
 
     expect(response.status).toBe(400);
     expect(body.code).toBe('BAD_ASSET');
     expect(ctorMock).not.toHaveBeenCalled();
+  });
+
+  it('well-formed but never-pushed symbol -> 404 NO_DECISION, no Anthropic client constructed, no fetch call (T-3)', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch');
+    vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
+    const { GET } = await import('@/app/api/decisions/[asset]/narrative/route');
+
+    const response = await GET(makeRequest('http://localhost/x'), paramsFor('DOGEUSDT'));
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body.code).toBe('NO_DECISION');
+    expect(ctorMock).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 
   it('no Decision found for the asset in the current cache -> 404 NO_DECISION', async () => {
