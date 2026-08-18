@@ -1,6 +1,6 @@
-# Delta for semantic-ingestion (Layer 1)
+# semantic-ingestion Specification
 
-## ADDED Requirements
+## ADDED Requirements (from dynamic-asset-count)
 
 ### Requirement: Market-data fetch contract
 The system MUST fetch the last 50 OHLCV candles per configured asset from Binance's public klines endpoint without an API key, per proposal Scope/D4 and PRD §"Requerimientos de Implementación" (Automatización).
@@ -51,6 +51,45 @@ The system MUST represent each computed indicator reading as a `faf:IndicatorVal
 - WHEN a downstream consumer queries by `rdf:type`
 - THEN `faf:PriceEvent` and `faf:IndicatorValue` MUST be distinguishable via `rdf:type` alone (paper §3.2)
 
+### Requirement: POST /api/cycle symbol validation contract
+
+`POST /api/cycle` MUST authenticate every request via the existing `x-faf-shared-secret` header (unchanged trust boundary). Each `symbol` in the payload MUST be validated against the format regex `^[A-Z0-9]{2,20}USDT$`, independent of any enumerated list. The payload MUST be rejected if it contains more than `MAX_ASSETS = 25` symbols — a standalone cap decoupled from any list length. No enumerated-membership concept (`ASSET_ALLOWLIST` / `AllowedAsset` / `isAllowedAsset`) MUST gate symbol acceptance; these are removed.
+
+#### Scenario: Well-formed, previously-unseen symbol accepted
+- GIVEN a request with a valid shared secret and symbol "ADAUSDT", never named anywhere in app source code
+- WHEN `POST /api/cycle` is called
+- THEN the symbol MUST be accepted — never rejected for being absent from a list
+
+#### Scenario: Malformed symbol rejected
+- GIVEN a request with a valid shared secret and symbol "eth-usdt" (fails the format regex)
+- WHEN `POST /api/cycle` is called
+- THEN the response MUST reject that symbol with a 400
+
+#### Scenario: Payload exceeding MAX_ASSETS rejected
+- GIVEN a request with a valid shared secret and 26 well-formed symbols
+- WHEN `POST /api/cycle` is called
+- THEN the response MUST be rejected for exceeding `MAX_ASSETS = 25`, independent of symbol format validity
+
+#### Scenario: Missing or invalid shared secret still rejected
+- GIVEN a request without a valid `x-faf-shared-secret` header
+- WHEN `POST /api/cycle` is called with any symbols
+- THEN the response MUST be 401/403 regardless of symbol format
+
+### Requirement: Push-only asset ingestion
+
+The system MUST accept asset data (candles, symbols) exclusively through `POST /api/cycle`. No other code path — including any GET read path's cache-miss handling — MUST originate asset data by independently fetching Binance or any other market-data source.
+
+#### Scenario: Cache miss does not trigger an independent pull
+- GIVEN no cached decision report exists
+- WHEN a GET read path (`/api/decisions` or the narrative route) is invoked
+- THEN the system MUST NOT call any Binance-fetching function to originate new asset data
+- AND MUST rely solely on data previously pushed via `POST /api/cycle`
+
+#### Scenario: POST /api/cycle is the sole ingestion entry point
+- GIVEN the full set of routes in the system
+- WHEN identifying which routes can introduce new asset/candle data into the cache
+- THEN only `POST /api/cycle` MUST do so
+
 ### Requirement: n8n symbol-list-driven single-pipeline fan-out
 
 The scheduled cycle MUST deliver every successfully-fetched asset in one `/api/cycle` payload through a constant-node-count pipeline: one Code node MUST emit one item per symbol from a literal array; one parameterized HTTP Request node MUST fetch klines for every item via `={{ $json.symbol }}`; one Set node MUST attach `symbol` and `klines` per item before the unchanged `Aggregate` node. No `n8n-nodes-base.merge` node MUST exist — there are no parallel branches to converge.
@@ -71,11 +110,12 @@ The scheduled cycle MUST deliver every successfully-fetched asset in one `/api/c
 - THEN it is the expression `={{ $json.symbol }}`
 - AND no symbol literal (e.g. "BTCUSDT") appears anywhere in that node's parameters
 
-#### Scenario: Symbol list matches the current asset allowlist
-- GIVEN the Symbols Code node's literal array
-- WHEN compared against `src/market/assets.ts`'s `ASSET_ALLOWLIST`
-- THEN both contain exactly BTCUSDT, ETHUSDT, SOLUSDT
-- AND the Code node's `notes` documents the duplication and points at `src/market/assets.ts`
+#### Scenario: Symbol-list-to-allowlist duplication check is retired
+- GIVEN `dynamic-asset-count` removes `ASSET_ALLOWLIST` as an enumerated-membership concept from `src/market/assets.ts`
+- WHEN this requirement's original "Symbol list matches the current asset allowlist" scenario (from `n8n-dynamic-asset-list`) is re-evaluated
+- THEN that scenario is vacuous — there is no allowlist left to compare the Code node's array against
+- AND the Symbols Code node's literal array remains the sole definition of which symbols n8n fetches per cycle, with no source-code list to keep in sync
+- AND the Code node's `notes` documenting the (now-nonexistent) duplication MUST be updated or removed as part of this change
 
 #### Scenario: Topology is strictly linear
 - GIVEN `n8n/faf-workflow.json`'s `connections` object
