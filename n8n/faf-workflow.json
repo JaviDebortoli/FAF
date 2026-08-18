@@ -2,12 +2,6 @@
   "name": "FAF - Cycle Trigger",
   "nodes": [
     {
-      "id": "schedule-trigger-1",
-      "name": "Schedule Trigger (1-5min)",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [-40, 300],
-      "notes": "Per design.md D2: n8n stays cron+fetch only, no RDF-ification. Cadence (2min here, tune 1-5min per PRD) is INTENTIONALLY finer than the 1h candle beta most ticks land on an in-progress candle. That is expected and safe: docs/architecture-notes.md documents that runCycle is a pure function of its input candles (no wall-clock reads), so repeated /api/cycle calls against an unchanged/in-progress candle are idempotent no-ops (tests/cycle/idempotency.test.ts), not a bug to engineer around with cadence alignment.",
       "parameters": {
         "rule": {
           "interval": [
@@ -17,37 +11,49 @@
             }
           ]
         }
-      }
+      },
+      "id": "4fd9a18e-f42e-4e3d-92dd-69b97e12a4b4",
+      "name": "Schedule Trigger (1-5min)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        592,
+        848
+      ],
+      "notes": "Per design.md D2: n8n stays cron+fetch only, no RDF-ification. Cadence (2min here, tune 1-5min per PRD) is INTENTIONALLY finer than the 1h candle beta most ticks land on an in-progress candle. That is expected and safe: docs/architecture-notes.md documents that runCycle is a pure function of its input candles (no wall-clock reads), so repeated /api/cycle calls against an unchanged/in-progress candle are idempotent no-ops (tests/cycle/idempotency.test.ts), not a bug to engineer around with cadence alignment."
     },
     {
-      "id": "symbols-list",
+      "parameters": {
+        "jsCode": "// Emits one item per configured asset. Adding an asset = ONE array entry\n// here; node count and wiring never change (that is the point of this shape).\n//\n// ASSET_ALLOWLIST and isAllowedAsset no longer exist in src/market/assets.ts\n// (removed by the dynamic-asset-count change). /api/cycle now validates each\n// symbol by format only (isWellFormedAsset, pattern ^[A-Z0-9]{2,20}USDT$),\n// independent of any list, plus a standalone MAX_ASSETS=25 cap. Adding or\n// removing a symbol here needs no app-side change beyond staying within\n// that cap (openspec/changes/dynamic-asset-count/proposal.md).\nconst SYMBOLS = [\n  'BTCUSDT', \n  'ETHUSDT', \n  'SOLUSDT',\n  'DOTUSDT'\n];\n\n// pairedItem is stated explicitly: every symbol item derives from the single\n// Schedule Trigger item. This keeps n8n's item-linking chain complete for the\n// downstream $('Symbols').item back-reference in 'Set Symbol'.\nreturn SYMBOLS.map((symbol) => ({ json: { symbol }, pairedItem: { item: 0 } }));"
+      },
+      "id": "853b3a0a-8812-4033-b8db-e7dd4eb0f727",
       "name": "Symbols",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [90, 300],
-      "notes": "Single source of this workflow's asset list. Emits one item per symbol; every downstream node runs once per item, which is why the pipeline needs no per-asset nodes and no Merge fan-in. ASSET_ALLOWLIST and isAllowedAsset no longer exist in src/market/assets.ts (removed by the dynamic-asset-count change) - /api/cycle now validates each symbol by format only (isWellFormedAsset, pattern ^[A-Z0-9]{2,20}USDT$), independent of any list, plus a standalone MAX_ASSETS=25 cap. Adding or removing a symbol here needs no app-side change beyond staying within that cap. DO NOT RENAME this node: 'Set Symbol' recovers each item's symbol through $('Symbols').",
-      "parameters": {
-        "language": "javaScript",
-        "jsCode": "// Emits one item per configured asset. Adding an asset = ONE array entry\n// here; node count and wiring never change (that is the point of this shape).\n//\n// ASSET_ALLOWLIST and isAllowedAsset no longer exist in src/market/assets.ts\n// (removed by the dynamic-asset-count change). /api/cycle now validates each\n// symbol by format only (isWellFormedAsset, pattern ^[A-Z0-9]{2,20}USDT$),\n// independent of any list, plus a standalone MAX_ASSETS=25 cap. Adding or\n// removing a symbol here needs no app-side change beyond staying within\n// that cap (openspec/changes/dynamic-asset-count/proposal.md).\nconst SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];\n\n// pairedItem is stated explicitly: every symbol item derives from the single\n// Schedule Trigger item. This keeps n8n's item-linking chain complete for the\n// downstream $('Symbols').item back-reference in 'Set Symbol'.\nreturn SYMBOLS.map((symbol) => ({ json: { symbol }, pairedItem: { item: 0 } }));"
-      }
+      "position": [
+        816,
+        848
+      ],
+      "notes": "Single source of this workflow's asset list. Emits one item per symbol; every downstream node runs once per item, which is why the pipeline needs no per-asset nodes and no Merge fan-in. ASSET_ALLOWLIST and isAllowedAsset no longer exist in src/market/assets.ts (removed by the dynamic-asset-count change) - /api/cycle now validates each symbol by format only (isWellFormedAsset, pattern ^[A-Z0-9]{2,20}USDT$), independent of any list, plus a standalone MAX_ASSETS=25 cap. Adding or removing a symbol here needs no app-side change beyond staying within that cap. DO NOT RENAME this node: 'Set Symbol' recovers each item's symbol through $('Symbols')."
     },
     {
-      "id": "fetch-klines",
-      "name": "Fetch Klines",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [220, 300],
-      "onError": "continueErrorOutput",
-      "notes": "Raw fetch only (D2). ONE node for every asset: n8n runs it once per input item, so the 'symbol' query value is the per-item expression {{ $json.symbol }} instead of a literal - adding an asset needs no new node. limit=50 matches the system's uniform per-cycle window (see faf-platform design.md 'Why 50'). onError routes a PER-ITEM Binance failure/rate-limit to this node's dedicated ERROR output pin (main[1]), left intentionally unconnected: n8n catches the failure for that item only and continues with the next, so main[0] simply yields no item for that asset while the others still reach /api/cycle - mirroring runCycle's 'skip a zero-candle asset, don't error' semantics. Batching is future-proofing only: at 3 items the whole list is one batch, so the 1000ms interval (which applies BETWEEN batches) never fires; the first throttle would appear at 51 symbols.",
       "parameters": {
-        "method": "GET",
         "url": "https://api.binance.com/api/v3/klines",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "symbol", "value": "={{ $json.symbol }}" },
-            { "name": "interval", "value": "1h" },
-            { "name": "limit", "value": "50" }
+            {
+              "name": "symbol",
+              "value": "={{ $json.symbol }}"
+            },
+            {
+              "name": "interval",
+              "value": "1h"
+            },
+            {
+              "name": "limit",
+              "value": "50"
+            }
           ]
         },
         "options": {
@@ -58,15 +64,19 @@
             }
           }
         }
-      }
+      },
+      "id": "71506887-b63d-4f97-957a-e304e9f757ed",
+      "name": "Fetch Klines",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        848
+      ],
+      "onError": "continueErrorOutput",
+      "notes": "Raw fetch only (D2). ONE node for every asset: n8n runs it once per input item, so the 'symbol' query value is the per-item expression {{ $json.symbol }} instead of a literal - adding an asset needs no new node. limit=50 matches the system's uniform per-cycle window (see faf-platform design.md 'Why 50'). onError routes a PER-ITEM Binance failure/rate-limit to this node's dedicated ERROR output pin (main[1]), left intentionally unconnected: n8n catches the failure for that item only and continues with the next, so main[0] simply yields no item for that asset while the others still reach /api/cycle - mirroring runCycle's 'skip a zero-candle asset, don't error' semantics. Batching is future-proofing only: at 3 items the whole list is one batch, so the 1000ms interval (which applies BETWEEN batches) never fires; the first throttle would appear at 51 symbols."
     },
     {
-      "id": "set-symbol",
-      "name": "Set Symbol",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [350, 300],
-      "notes": "Attaches this item's symbol plus the raw klines array under a stable 'klines' field, so the Aggregate Code node downstream never infers the asset from item order. The symbol CANNOT be read from $json here: the HTTP Request node upstream replaced each item's json with Binance's response. It is recovered by n8n item linking from the 'Symbols' node ($('Symbols').item), which resolves per item via pairedItem - so renaming 'Symbols' breaks this expression, and a mispairing would fail loudly rather than silently mislabel (see the M3 check in n8n/POST_IMPORT_STEPS.md).",
       "parameters": {
         "assignments": {
           "assignments": [
@@ -85,27 +95,32 @@
           ]
         },
         "options": {}
-      }
+      },
+      "id": "986293c4-d7f8-405f-be1e-7db31feb2958",
+      "name": "Set Symbol",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1280,
+        832
+      ],
+      "notes": "Attaches this item's symbol plus the raw klines array under a stable 'klines' field, so the Aggregate Code node downstream never infers the asset from item order. The symbol CANNOT be read from $json here: the HTTP Request node upstream replaced each item's json with Binance's response. It is recovered by n8n item linking from the 'Symbols' node ($('Symbols').item), which resolves per item via pairedItem - so renaming 'Symbols' breaks this expression, and a mispairing would fail loudly rather than silently mislabel (see the M3 check in n8n/POST_IMPORT_STEPS.md)."
     },
     {
-      "id": "aggregate-payload",
+      "parameters": {
+        "jsCode": "// Each incoming item carries one asset's symbol + raw Binance klines\n// response (array of [openTime, open, high, low, close, volume, closeTime, ...]),\n// both attached explicitly by the per-branch 'Set Symbol - {SYMBOL}' node\n// upstream. No positional (item-order) inference is used here.\n\nfunction toCandle(row) {\n  return {\n    openTime: Number(row[0]),\n    open: Number(row[1]),\n    high: Number(row[2]),\n    low: Number(row[3]),\n    close: Number(row[4]),\n    volume: Number(row[5]),\n  };\n}\n\nconst assets = items.map((item) => ({\n  symbol: item.json.symbol,\n  klines: item.json.klines.map(toCandle),\n}));\n\nreturn [{ json: { assets } }];"
+      },
+      "id": "7719e809-f58b-405c-94c3-437b551ec43a",
       "name": "Aggregate (build /api/cycle payload)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [610, 300],
-      "notes": "Only reshapes raw Binance kline arrays [openTime,open,high,low,close,volume,...] into the Candle[] shape app/api/cycle/route.ts expects ({symbol, klines:[{openTime,open,high,low,close,volume}]}). No RDF, no indicator math, no decision logic here - all of that stays server-side (D2). Reads item.json.symbol/item.json.klines directly, both hardcoded/attached by the per-branch Set node upstream - no positional item-order inference.",
-      "parameters": {
-        "language": "javaScript",
-        "jsCode": "// Each incoming item carries one asset's symbol + raw Binance klines\n// response (array of [openTime, open, high, low, close, volume, closeTime, ...]),\n// both attached explicitly by the per-branch 'Set Symbol - {SYMBOL}' node\n// upstream. No positional (item-order) inference is used here.\n\nfunction toCandle(row) {\n  return {\n    openTime: Number(row[0]),\n    open: Number(row[1]),\n    high: Number(row[2]),\n    low: Number(row[3]),\n    close: Number(row[4]),\n    volume: Number(row[5]),\n  };\n}\n\nconst assets = items.map((item) => ({\n  symbol: item.json.symbol,\n  klines: item.json.klines.map(toCandle),\n}));\n\nreturn [{ json: { assets } }];"
-      }
+      "position": [
+        1504,
+        832
+      ],
+      "notes": "Only reshapes raw Binance kline arrays [openTime,open,high,low,close,volume,...] into the Candle[] shape app/api/cycle/route.ts expects ({symbol, klines:[{openTime,open,high,low,close,volume}]}). No RDF, no indicator math, no decision logic here - all of that stays server-side (D2). Reads item.json.symbol/item.json.klines directly, both hardcoded/attached by the per-branch Set node upstream - no positional item-order inference."
     },
     {
-      "id": "post-cycle",
-      "name": "POST /api/cycle",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [870, 300],
-      "notes": "MANUAL STEP 1 - replace REPLACE_WITH_YOUR_DEPLOYED_APP_URL in the url with your real deployed app origin. MANUAL STEP 2 - create a Header Auth credential named exactly 'FAF Cycle Shared Secret' with Name=x-faf-shared-secret and Value=<your FAF_CYCLE_SHARED_SECRET>, then select it here. T-2: the secret is NEVER stored in this JSON - n8n excludes credential values from workflow export. $env is not usable: n8n Cloud exposes no custom $env, and $vars requires Pro/Enterprise (this instance is Starter).",
       "parameters": {
         "method": "POST",
         "url": "https://REPLACE_WITH_YOUR_DEPLOYED_APP_URL/api/cycle",
@@ -114,7 +129,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "content-type", "value": "application/json" }
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -122,34 +140,92 @@
         "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {}
       },
+      "id": "3d8ef1a3-7edf-4d3a-835a-7ff559c18db5",
+      "name": "POST /api/cycle",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1728,
+        832
+      ],
       "credentials": {
-        "httpHeaderAuth": { "id": null, "name": "FAF Cycle Shared Secret" }
-      }
+        "httpHeaderAuth": {
+          "id": "QDkpREyVLQ81WA7S",
+          "name": "FAF Cycle Shared Secret"
+        }
+      },
+      "notes": "MANUAL STEP 1 - replace REPLACE_WITH_YOUR_DEPLOYED_APP_URL in the url with your real deployed app origin. MANUAL STEP 2 - create a Header Auth credential named exactly 'FAF Cycle Shared Secret' with Name=x-faf-shared-secret and Value=<your FAF_CYCLE_SHARED_SECRET>, then select it here. T-2: the secret is NEVER stored in this JSON - n8n excludes credential values from workflow export. $env is not usable: n8n Cloud exposes no custom $env, and $vars requires Pro/Enterprise (this instance is Starter)."
     }
   ],
+  "pinData": {},
   "connections": {
     "Schedule Trigger (1-5min)": {
-      "main": [[{ "node": "Symbols", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Symbols",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Symbols": {
-      "main": [[{ "node": "Fetch Klines", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Fetch Klines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch Klines": {
-      "main": [[{ "node": "Set Symbol", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set Symbol",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Set Symbol": {
-      "main": [[{ "node": "Aggregate (build /api/cycle payload)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Aggregate (build /api/cycle payload)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Aggregate (build /api/cycle payload)": {
-      "main": [[{ "node": "POST /api/cycle", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "POST /api/cycle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
   },
-  "pinData": {},
+  "versionId": "499cd7f0-a5d3-4b19-8cda-70ef46f399c4",
   "meta": {
-    "instanceId": "faf-platform-reference-export"
-  }
+    "instanceId": "a4561efc46454cd0046fad03a30b5c38a1fe076b42562dc11bad959aa3d02aa0"
+  },
+  "nodeGroups": [],
+  "id": "DItMyekgUtg6qnXU",
+  "tags": []
 }
