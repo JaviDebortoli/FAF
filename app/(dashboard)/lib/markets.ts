@@ -1,23 +1,24 @@
 /**
  * `market-nav-redesign` design.md "Route Structure" / "Component Contracts" —
- * single config source for both the sidebar nav (PR2's `Sidebar.tsx`) and the
+ * single config source for both the sidebar nav (`Sidebar.tsx`) and the
  * placeholder-route lookup (PR3's `[market]/page.tsx`). Grouping/order MUST
  * match `specs/market-navigation/spec.md`'s corrected "Sidebar navigation
  * shell" requirement exactly: "MERCADOS PRINCIPALES" (7 items, NO CEDEARs)
  * then "MERCADO ARGENTINO" (3 items, CEDEARs first).
  *
- * `icon` is typed as `string` (not `keyof typeof Icons`) in this PR: design.md's
- * sketch types it against `components/icons.tsx`, which does not exist until
- * PR2 (Phase 2, task 2.4). Typing against it here would break
- * `npx tsc --noEmit` for this PR in isolation. Deviation noted for the
- * apply-progress report; PR2 should tighten this to `keyof typeof Icons` once
- * `icons.tsx` lands, matching the icon names already assigned below.
+ * `icon` is typed as `keyof typeof Icons` (Phase 2/PR2, task 2.4/2.5) now
+ * that `components/icons.tsx` exists — tightened from PR1's `string`
+ * placeholder (see PR1's apply-progress "Deviation — Market.icon field
+ * type"); the icon names below were already correct, this is a type-only
+ * change.
  */
+import type { Icons } from '../components/icons';
+
 export interface Market {
   slug: string;
   label: string;
-  /** Icon component name from PR2's `components/icons.tsx` — see file header. */
-  icon: string;
+  /** Icon component name — must be a key of `Icons` (`components/icons.tsx`). */
+  icon: keyof typeof Icons;
   /** True only for `crypto` — the sole market with real backend data. Every
    * other market renders PR3's shared "próximamente" placeholder. */
   isReal: boolean;
