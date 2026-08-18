@@ -44,18 +44,32 @@ byte-identical to the pre-refactor file, so this step carries over verbatim.
 On the `POST /api/cycle` node, replace `REPLACE_WITH_YOUR_DEPLOYED_APP_URL` in the `url` field with
 your real deployed app origin. Re-importing the workflow resets this — re-apply it after every import.
 
-## M4 — Execute once and confirm all 3 assets
+## M4 — Execute once and confirm N assets (N = number of symbols in `Symbols`)
 
-Execute the workflow once. Confirm:
+Execute the workflow once. Confirm, **in this order**:
 
-- The `Aggregate (build /api/cycle payload)` node's output has `assets.length === 3`, with 3 distinct
-  symbols (BTCUSDT, ETHUSDT, SOLUSDT) and each `klines` a non-empty array of candle objects.
-- `POST /api/cycle` returns a 200 response.
+1. **Source-node regression guard (check this FIRST, before anything downstream)**: `Fetch Klines`'s
+   output item count equals `Symbols`'s input item count — i.e. exactly N items, one per configured
+   symbol, **not** N × 50. This is the exact node where the `n8n-fetch-klines-item-fix` production
+   incident originated (Binance's array-of-klines response was being split into one item per candle
+   row instead of one item per symbol), so it must be checked at the source, not only inferred from
+   the final payload. If you see N × 50 items here, the fix did not take — see the UI toggle check
+   below before going further.
+2. **UI toggle spot-check**: on `Fetch Klines`, confirm **Options → Response → Include Response
+   Headers and Status** shows as **ON**. This is `options.response.response.fullResponse: true` in
+   the JSON (`n8n-fetch-klines-item-fix` design.md) — the field that fixes check 1 above. If the JSON
+   import did not correctly populate this toggle, re-enable it manually in the UI.
+3. The `Aggregate (build /api/cycle payload)` node's output has `assets.length === N`, with N distinct
+   symbols (matching `Symbols`'s configured list) and each `klines` a non-empty array of candle
+   objects.
+4. `POST /api/cycle` returns a 200 response.
 
-This is also a discriminator for a pre-existing, unrelated unknown: if `assets.length` is far greater
-than 3 (e.g. ~150), n8n split Binance's array response into one item per kline row rather than treating
-it as one response per asset. That would be a separate, pre-existing behavior unchanged by this
-refactor — see design.md's "Residual risk" section for the minimal fix if it occurs.
+If `assets.length` is far greater than N (e.g. N × 50), this confirms the same regression as check 1 —
+n8n split Binance's array response into one item per kline row rather than one item per asset. This was
+a documented pre-existing unknown (see the archived `n8n-dynamic-asset-list/design.md`'s "Residual
+risk" section) that shipped to production before it was actually confirmed live; `n8n-fetch-klines-item-fix`
+fixes it via check 2 above. If checks 1-2 both look correct but `assets.length` is still wrong, do not
+improvise — open a new SDD change.
 
 ## M5 — Break one symbol; resilience + `pairedItem` sanity check
 

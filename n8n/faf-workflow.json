@@ -62,6 +62,11 @@
               "batchSize": 50,
               "batchInterval": 1000
             }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
           }
         }
       },
@@ -74,7 +79,7 @@
         848
       ],
       "onError": "continueErrorOutput",
-      "notes": "Raw fetch only (D2). ONE node for every asset: n8n runs it once per input item, so the 'symbol' query value is the per-item expression {{ $json.symbol }} instead of a literal - adding an asset needs no new node. limit=50 matches the system's uniform per-cycle window (see faf-platform design.md 'Why 50'). onError routes a PER-ITEM Binance failure/rate-limit to this node's dedicated ERROR output pin (main[1]), left intentionally unconnected: n8n catches the failure for that item only and continues with the next, so main[0] simply yields no item for that asset while the others still reach /api/cycle - mirroring runCycle's 'skip a zero-candle asset, don't error' semantics. Batching is future-proofing only: at 3 items the whole list is one batch, so the 1000ms interval (which applies BETWEEN batches) never fires; the first throttle would appear at 51 symbols."
+      "notes": "Raw fetch only (D2). ONE node for every asset: n8n runs it once per input item, so the 'symbol' query value is the per-item expression {{ $json.symbol }} instead of a literal - adding an asset needs no new node. limit=50 matches the system's uniform per-cycle window (see faf-platform design.md 'Why 50'). onError routes a PER-ITEM Binance failure/rate-limit to this node's dedicated ERROR output pin (main[1]), left intentionally unconnected: n8n catches the failure for that item only and continues with the next, so main[0] simply yields no item for that asset while the others still reach /api/cycle - mirroring runCycle's 'skip a zero-candle asset, don't error' semantics. Batching is future-proofing only: at 3 items the whole list is one batch, so the 1000ms interval (which applies BETWEEN batches) never fires; the first throttle would appear at 51 symbols. options.response.response.fullResponse=true (n8n-fetch-klines-item-fix) is REQUIRED: without it, n8n splits Binance's array-of-klines response into one item PER CANDLE ROW instead of one item per symbol (confirmed production incident), exploding item count and breaking Set Symbol/Aggregate downstream. With fullResponse=true this node always emits exactly one item per HTTP call, shaped {body, headers, statusCode, statusMessage} - Set Symbol's ={{ $json.body ?? $json }} already reads .body first, so no downstream node needs to change."
     },
     {
       "parameters": {
