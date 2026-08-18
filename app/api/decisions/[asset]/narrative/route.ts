@@ -1,6 +1,4 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { AllowedAsset } from '@/src/market/assets';
-import { isAllowedAsset } from '@/src/market/assets';
 import type { Decision } from '@/src/domain/types';
 import { runCycle } from '@/src/cycle/runCycle';
 import { pullAllAssets } from '@/src/cycle/pullAssets';
@@ -31,6 +29,22 @@ export const maxDuration = 60;
 const STREAM_DEADLINE_MS = 45_000;
 
 const INCOMPLETE_MARKER = '\n\n[NARRATIVE_INCOMPLETE]';
+
+/**
+ * TEMPORARY compatibility shim (dynamic-asset-count Phase 1): the old
+ * `AllowedAsset`/`isAllowedAsset` exports were removed from
+ * `src/market/assets.ts` in this change's Phase 1 (ingestion validation
+ * boundary), but this route's own migration to `isWellFormedAsset` (and
+ * deletion of `getDecisionForAsset` below) is deferred to Phase 2b (task
+ * 2b.2). This inlines the exact same 3-symbol membership check the removed
+ * exports provided, preserving identical behavior — zero functional change
+ * — until Phase 2b replaces it with the format-based gate.
+ */
+const NARRATIVE_ALLOWLIST = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'] as const;
+type AllowedAsset = (typeof NARRATIVE_ALLOWLIST)[number];
+function isAllowedAsset(asset: string): asset is AllowedAsset {
+  return (NARRATIVE_ALLOWLIST as readonly string[]).includes(asset);
+}
 
 type ErrorCode =
   | 'BAD_ASSET'
