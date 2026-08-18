@@ -190,6 +190,18 @@ async function stubDecisions(page: import('@playwright/test').Page, report: Deci
   });
 }
 
+/** `dynamic-asset-count` PR3 — stubs the real cache-miss contract
+ * (`app/api/decisions/route.ts`'s `503 { error, code: 'NO_DATA' }`) so the
+ * dashboard's no-data state can be exercised without a live n8n push. */
+async function stubDecisionsUnavailable(page: import('@playwright/test').Page) {
+  await page.route('**/api/decisions', async (route) => {
+    await route.fulfill({
+      status: 503,
+      json: { error: 'Service temporarily unavailable', code: 'NO_DATA' },
+    });
+  });
+}
+
 /** Success stub for `GET /api/decisions/[asset]/narrative` — matches the
  * real route's contract exactly (`NarrativePanel.tsx` reads
  * `response.body?.getReader()` on 200s): `text/plain` body, 200 status. The
@@ -261,6 +273,33 @@ test.describe('Tier 1 — empty states', () => {
     await expect(empty).toHaveAttribute('data-variant', 'no-active');
 
     await expect(page.locator('[data-testid^="decision-card-"]')).toHaveCount(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// `dynamic-asset-count` PR3 — no-data state (cache-miss, distinct from the
+// selection-based EmptyState above; must never leak architecture terms)
+// ---------------------------------------------------------------------------
+
+test.describe('Tier 1 — no-data state', () => {
+  test('renders the architecture-agnostic service-unavailable message on a 503 NO_DATA response', async ({
+    page,
+  }) => {
+    await stubDecisionsUnavailable(page);
+
+    await page.goto('/');
+
+    const unavailable = page.getByTestId('service-unavailable');
+    await expect(unavailable).toBeVisible();
+    await expect(unavailable).toHaveAttribute('data-reason', 'no-data');
+
+    // Distinct from the selection-emptiness EmptyState — must not both match.
+    await expect(page.getByTestId('empty-state')).toHaveCount(0);
+
+    // Binding UX requirement (proposal.md "Resolved: Cache-Miss / No-Data
+    // UX"): the end user must never see architecture-level terms.
+    const bodyText = await page.locator('body').innerText();
+    expect(bodyText).not.toMatch(/n8n|cache|pull|cycle/i);
   });
 });
 

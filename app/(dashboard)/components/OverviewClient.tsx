@@ -7,12 +7,25 @@ import { DecisionCard } from './DecisionCard';
 import { DirectionFilter } from './DirectionFilter';
 import { DrilldownPanel } from './DrilldownPanel';
 import { EmptyState } from './EmptyState';
+import { ServiceUnavailable } from './ServiceUnavailable';
 
 /** UI polling cadence — distinct from `BETA_MS` (the backend cache TTL in
  * `src/cycle/constants.ts`); polling faster than the cache refreshes simply
  * re-serves the cached report, which is cheap and keeps the "changed since
  * last poll" state responsive without adding load. */
 const POLL_INTERVAL_MS = 30_000;
+
+/**
+ * `dynamic-asset-count` design.md "`OverviewClient` view state machine" —
+ * replaces the old `report`/`error` pair. `unavailable` means "never had a
+ * successful `ready` state" — a failed refresh AFTER a successful load keeps
+ * the last `ready` report instead of blanking the dashboard on a transient
+ * blip (recovery is bounded by the existing `POLL_INTERVAL_MS`).
+ */
+type ViewState =
+  | { kind: 'loading' }
+  | { kind: 'unavailable'; reason: 'no-data' | 'error' }
+  | { kind: 'ready'; report: DecisionReport };
 
 /**
  * design.md "Component Architecture" — the sole client island for Tier 1:
@@ -25,8 +38,7 @@ const POLL_INTERVAL_MS = 30_000;
  * Tier 1 card grid itself (D7 clause 1).
  */
 export function OverviewClient() {
-  const [report, setReport] = useState<DecisionReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [viewState, setViewState] = useState<ViewState>({ kind: 'loading' });
   const [direction, setDirection] = useState<Direction>('ALL');
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
   const [changedAssets, setChangedAssets] = useState<Set<string>>(new Set());
@@ -35,32 +47,53 @@ export function OverviewClient() {
   useEffect(() => {
     let cancelled = false;
 
+    /** On any failure, `unavailable` is set ONLY when there is no prior
+     * `ready` state yet (via the functional updater, reading the latest
+     * state rather than a stale closure) — this is what keeps a successful
+     * dashboard from blanking on a transient poll failure. */
+    function markUnavailable(reason: 'no-data' | 'error') {
+      if (cancelled) return;
+      setViewState((prev) => (prev.kind === 'ready' ? prev : { kind: 'unavailable', reason }));
+    }
+
     async function poll() {
+      let response: Response;
       try {
-        const response = await fetch('/api/decisions');
-        if (!response.ok) {
-          throw new Error(`GET /api/decisions failed with status ${response.status}`);
-        }
-        const data = (await response.json()) as DecisionReport;
-        if (cancelled) return;
-
-        const changed = new Set<string>();
-        for (const decision of data.decisions) {
-          const previousT = lastTimestamps.current.get(decision.asset);
-          if (previousT !== undefined && previousT !== decision.t) {
-            changed.add(decision.asset);
-          }
-          lastTimestamps.current.set(decision.asset, decision.t);
-        }
-
-        setReport(data);
-        setChangedAssets(changed);
-        setError(null);
+        response = await fetch('/api/decisions');
       } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Unknown error loading decisions');
-        }
+        // Network-level failure (e.g. connection refused) — technical detail
+        // stays in the console, never reaches the DOM (architecture-agnostic
+        // UX requirement, proposal.md "Resolved: Cache-Miss / No-Data UX").
+        console.error('GET /api/decisions failed:', err);
+        markUnavailable('error');
+        return;
       }
+
+      if (response.status === 503) {
+        markUnavailable('no-data');
+        return;
+      }
+
+      if (!response.ok) {
+        console.error(`GET /api/decisions failed with status ${response.status}`);
+        markUnavailable('error');
+        return;
+      }
+
+      const data = (await response.json()) as DecisionReport;
+      if (cancelled) return;
+
+      const changed = new Set<string>();
+      for (const decision of data.decisions) {
+        const previousT = lastTimestamps.current.get(decision.asset);
+        if (previousT !== undefined && previousT !== decision.t) {
+          changed.add(decision.asset);
+        }
+        lastTimestamps.current.set(decision.asset, decision.t);
+      }
+
+      setChangedAssets(changed);
+      setViewState({ kind: 'ready', report: data });
     }
 
     void poll();
@@ -71,18 +104,15 @@ export function OverviewClient() {
     };
   }, []);
 
-  if (error) {
-    return (
-      <p role="alert" className="rounded-md border border-sell/40 bg-sell/10 px-4 py-3 text-sm text-sell">
-        {error}
-      </p>
-    );
+  if (viewState.kind === 'loading') {
+    return <p className="font-mono text-sm text-muted">Cargando…</p>;
   }
 
-  if (!report) {
-    return <p className="font-mono text-sm text-muted">Cargando ciclo…</p>;
+  if (viewState.kind === 'unavailable') {
+    return <ServiceUnavailable reason={viewState.reason} />;
   }
 
+  const report = viewState.report;
   const allActionable = selectActionable(report, 'ALL');
   const visible = selectActionable(report, direction);
   const selectedDecision = selectedAsset ? (report.decisions.find((d) => d.asset === selectedAsset) ?? null) : null;
