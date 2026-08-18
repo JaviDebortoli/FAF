@@ -39,10 +39,6 @@ export default function CryptoDashboardPage() {
       </header>
 
       <OverviewClient />
-
-      <footer className="border-t border-zinc-800 pt-6 font-mono text-xs text-muted">
-        Trabajo de tesis — FAF Platform. σ, γ, ρ computados por el motor de decisión determinístico; θ = 0.67.
-      </footer>
     </main>
   );
 }

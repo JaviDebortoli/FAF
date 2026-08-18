@@ -87,6 +87,10 @@ export function Sidebar() {
         data-testid="sidebar-desktop-nav"
         className="hidden md:fixed md:inset-y-0 md:left-0 md:flex md:w-64 md:flex-col md:gap-6 md:overflow-y-auto md:border-r md:border-zinc-800 md:bg-zinc-950 md:px-4 md:py-6"
       >
+        <div data-testid="sidebar-branding" className="px-3">
+          <h1 className="text-lg font-bold tracking-tight text-zinc-50">Plataforma FAF</h1>
+          <p className="mt-1 text-xs text-muted">Recomendaciones financieras explicables en tiempo real</p>
+        </div>
         <MarketLinkGroups activeSlug={activeSlug} />
       </nav>
 
@@ -112,6 +116,10 @@ export function Sidebar() {
             aria-label="Mercados"
             className="absolute inset-y-0 left-0 flex w-64 flex-col gap-6 overflow-y-auto border-r border-zinc-800 bg-zinc-950 px-4 py-6"
           >
+            <div data-testid="sidebar-branding" className="px-3">
+              <h1 className="text-lg font-bold tracking-tight text-zinc-50">Plataforma FAF</h1>
+              <p className="mt-1 text-xs text-muted">Recomendaciones financieras explicables en tiempo real</p>
+            </div>
             <div className="flex items-center justify-between px-3">
               <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted">Mercados</span>
               <button
