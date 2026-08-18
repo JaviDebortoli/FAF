@@ -163,7 +163,8 @@ describe('POST /api/cycle — happy paths', () => {
   });
 
   it('accepts a payload with exactly MAX_ASSETS (25) well-formed symbols', async () => {
-    const { POST, MAX_ASSETS } = await import('@/app/api/cycle/route');
+    const { POST } = await import('@/app/api/cycle/route');
+    const { MAX_ASSETS } = await import('@/src/cycle/constants');
     const assets = Array.from({ length: MAX_ASSETS }, (_, i) => ({
       symbol: `ASSET${i}USDT`,
       klines: [],
@@ -177,7 +178,8 @@ describe('POST /api/cycle — happy paths', () => {
   });
 
   it('rejects a payload with MAX_ASSETS + 1 (26) well-formed symbols with 400 and never calls runCycle', async () => {
-    const { POST, MAX_ASSETS } = await import('@/app/api/cycle/route');
+    const { POST } = await import('@/app/api/cycle/route');
+    const { MAX_ASSETS } = await import('@/src/cycle/constants');
     const assets = Array.from({ length: MAX_ASSETS + 1 }, (_, i) => ({
       symbol: `ASSET${i}USDT`,
       klines: [],
