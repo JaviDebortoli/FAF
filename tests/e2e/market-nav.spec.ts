@@ -189,3 +189,101 @@ test.describe('Placeholder-market pages', () => {
     await expect(page.getByTestId('market-placeholder')).toHaveCount(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// `market-nav-redesign` Phase 4 (PR4), tasks 4.1-4.3 — mobile navigation
+// drawer. specs/market-navigation/spec.md "Mobile navigation drawer"
+// requirement: below `md`, a hamburger control opens a drawer overlay
+// listing the SAME markets, groups, and order as the desktop sidebar
+// (`Sidebar.tsx`'s `MarketLinkGroups`, not a duplicate); the drawer must be
+// closeable (close button and/or backdrop click); the existing mobile
+// single-column `/dashboard/crypto` view must not regress with the drawer
+// closed. Desktop sidebar (`sidebar-desktop-nav`) is `hidden md:flex` per
+// Phase 2 — this suite asserts the exact inverse for the hamburger trigger.
+// ---------------------------------------------------------------------------
+
+test.describe('Mobile navigation drawer', () => {
+  test.describe('below md breakpoint', () => {
+    test.use({ viewport: { width: 375, height: 812 } });
+
+    test('hamburger is visible and the desktop nav is hidden (inverse of desktop sidebar visibility)', async ({
+      page,
+    }) => {
+      await gotoCrypto(page);
+
+      await expect(page.getByTestId('sidebar-mobile-toggle')).toBeVisible();
+      await expect(page.getByTestId('sidebar-desktop-nav')).toBeHidden();
+    });
+
+    test('clicking the hamburger opens the drawer listing the same groups/markets/order as desktop', async ({
+      page,
+    }) => {
+      await gotoCrypto(page);
+
+      await page.getByTestId('sidebar-mobile-toggle').click();
+
+      const drawer = page.getByTestId('sidebar-mobile-drawer');
+      await expect(drawer).toBeVisible();
+      await expect(drawer.getByText('MERCADOS PRINCIPALES')).toBeVisible();
+      await expect(drawer.getByText('MERCADO ARGENTINO')).toBeVisible();
+
+      const allSlugs = [...MERCADOS_PRINCIPALES, ...MERCADO_ARGENTINO];
+      const testIds = await drawer.locator('[data-testid^="sidebar-link-"]').evaluateAll((els) =>
+        els.map((el) => el.getAttribute('data-testid')),
+      );
+      expect(testIds).toEqual(allSlugs.map((slug) => `sidebar-link-${slug}`));
+    });
+
+    test('closing the drawer via the close button hides it again', async ({ page }) => {
+      await gotoCrypto(page);
+
+      await page.getByTestId('sidebar-mobile-toggle').click();
+      await expect(page.getByTestId('sidebar-mobile-drawer')).toBeVisible();
+
+      await page.getByTestId('sidebar-mobile-close').click();
+      await expect(page.getByTestId('sidebar-mobile-drawer')).toHaveCount(0);
+    });
+
+    test('closing the drawer via a backdrop click hides it again', async ({ page }) => {
+      await gotoCrypto(page);
+
+      await page.getByTestId('sidebar-mobile-toggle').click();
+      await expect(page.getByTestId('sidebar-mobile-drawer')).toBeVisible();
+
+      // Click outside the drawer panel's own bounds (w-64 = 256px) so the
+      // backdrop, not the nav panel stacked above it, receives the click.
+      await page.getByTestId('sidebar-mobile-backdrop').click({ position: { x: 320, y: 10 } });
+      await expect(page.getByTestId('sidebar-mobile-drawer')).toHaveCount(0);
+    });
+
+    test('clicking a drawer link closes the drawer and navigates', async ({ page }) => {
+      await gotoCrypto(page);
+
+      await page.getByTestId('sidebar-mobile-toggle').click();
+      const drawer = page.getByTestId('sidebar-mobile-drawer');
+      await drawer.getByTestId('sidebar-link-acciones').click();
+
+      await expect(page).toHaveURL(/\/dashboard\/acciones$/);
+      await expect(page.getByTestId('sidebar-mobile-drawer')).toHaveCount(0);
+    });
+
+    test('/dashboard/crypto still renders correctly at mobile viewport with the drawer closed (no regression)', async ({
+      page,
+    }) => {
+      await gotoCrypto(page);
+
+      await expect(page.getByTestId('sidebar-mobile-drawer')).toHaveCount(0);
+      await expect(page.locator('main')).toContainText('Recomendaciones activas');
+      await expect(page.getByTestId('direction-filter-ALL')).toBeVisible();
+    });
+  });
+
+  test.describe('at/above md breakpoint (default desktop viewport)', () => {
+    test('hamburger is hidden and the desktop nav is visible', async ({ page }) => {
+      await gotoCrypto(page);
+
+      await expect(page.getByTestId('sidebar-mobile-toggle')).toBeHidden();
+      await expect(page.getByTestId('sidebar-desktop-nav')).toBeVisible();
+    });
+  });
+});

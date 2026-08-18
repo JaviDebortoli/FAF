@@ -1,0 +1,469 @@
+<!DOCTYPE html><html class="dark" lang="es" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>FAF - Panel de Decisiones</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#0c0e12",
+                        "on-tertiary-container": "#1d17b2",
+                        "surface-container-high": "#282a2e",
+                        "on-primary-fixed-variant": "#005236",
+                        "on-secondary-fixed-variant": "#92002a",
+                        "inverse-on-surface": "#2f3035",
+                        "text-primary": "#F8FAFC",
+                        "on-tertiary-fixed": "#07006c",
+                        "warning-theta": "#F59E0B",
+                        "tertiary-fixed-dim": "#c0c1ff",
+                        "surface-tint": "#4edea3",
+                        "surface-variant": "#333539",
+                        "on-primary-fixed": "#002113",
+                        "on-surface": "#e2e2e8",
+                        "tertiary-fixed": "#e1e0ff",
+                        "on-background": "#e2e2e8",
+                        "secondary-fixed": "#ffdadb",
+                        "outline-variant": "#3c4a42",
+                        "surface-card": "#16191E",
+                        "background": "#111317",
+                        "surface-container-low": "#1a1c20",
+                        "secondary-container": "#b50036",
+                        "bg-deep": "#0A0B0D",
+                        "outline": "#86948a",
+                        "on-error-container": "#ffdad6",
+                        "on-surface-variant": "#bbcabf",
+                        "text-muted": "#475569",
+                        "primary-container": "#10b981",
+                        "text-secondary": "#94A3B8",
+                        "on-error": "#690005",
+                        "error": "#ffb4ab",
+                        "on-tertiary": "#1000a9",
+                        "on-primary-container": "#00422b",
+                        "primary": "#4edea3",
+                        "on-secondary": "#67001b",
+                        "surface": "#111317",
+                        "secondary-fixed-dim": "#ffb2b7",
+                        "error-container": "#93000a",
+                        "sell-accent": "#F43F5E",
+                        "surface-container": "#1e2024",
+                        "surface-bright": "#37393e",
+                        "tertiary": "#c0c1ff",
+                        "on-primary": "#003824",
+                        "border-subtle": "#2D323B",
+                        "inverse-surface": "#e2e2e8",
+                        "primary-fixed-dim": "#4edea3",
+                        "on-secondary-fixed": "#40000d",
+                        "surface-dim": "#111317",
+                        "surface-container-highest": "#333539",
+                        "inverse-primary": "#006c49",
+                        "on-secondary-container": "#ffc2c4",
+                        "secondary": "#ffb2b7",
+                        "on-tertiary-fixed-variant": "#2f2ebe",
+                        "tertiary-container": "#9699ff",
+                        "buy-accent": "#10B981",
+                        "primary-fixed": "#6ffbbe"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1280px",
+                        "gutter": "1.5rem",
+                        "stack-sm": "0.5rem",
+                        "stack-md": "1rem",
+                        "stack-lg": "2rem",
+                        "margin-mobile": "1rem"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "mono-data": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "mono-data": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .gauge-arc {
+            stroke-dasharray: 125.6; /* 2 * pi * r (r=40, arc=180deg) approx 125.6 */
+            stroke-dashoffset: 0;
+            stroke-linecap: round;
+        }
+        .sparkline {
+            fill: none;
+            stroke: #bbcabf;
+            stroke-width: 1.5;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+        }
+    </style>
+</head>
+<body class="bg-bg-deep text-on-surface font-body-lg antialiased overflow-x-hidden flex">
+<!-- Top Navigation (Web Only) -->
+
+<!-- Side Navigation -->
+<aside class="hidden md:flex flex-col h-screen py-6 px-4 bg-surface-container-lowest border-r border-border-subtle fixed left-0 w-64 z-50">
+<div class="mb-8 px-4">
+<h1 class="text-headline-md font-headline-md font-bold tracking-tighter text-primary">Plataforma FAF</h1>
+<p class="font-body-sm text-body-sm text-text-muted mt-1">Recomendaciones financieras explicables en tiempo real</p>
+</div>
+<div class="flex-1 overflow-y-auto">
+<div class="mx-4 mb-6 border-t border-border-subtle"></div><div class="mb-6">
+<h2 class="px-4 font-label-caps text-label-caps text-text-muted mb-2 tracking-wider">MERCADOS PRINCIPALES</h2>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-sm">show_chart</span>
+<span class="font-body-sm text-body-sm">Acciones</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-primary bg-primary-container/10 border-r-2 border-primary font-bold hover:bg-surface-container-high transition-colors duration-200 scale-[0.99]" href="#">
+<span class="material-symbols-outlined text-sm">currency_bitcoin</span>
+<span class="font-body-sm text-body-sm">Criptomonedas</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-sm">account_balance</span>
+<span class="font-body-sm text-body-sm">Renta Fija</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-sm">currency_exchange</span>
+<span class="font-body-sm text-body-sm">Forex</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-sm">agriculture</span>
+<span class="font-body-sm text-body-sm">Commodities</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-sm">insert_chart</span>
+<span class="font-body-sm text-body-sm">Índices</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-sm">pie_chart</span>
+<span class="font-body-sm text-body-sm">ETFs</span>
+</a>
+</nav>
+</div>
+<div>
+<h2 class="px-4 font-label-caps text-label-caps text-text-muted mb-2 tracking-wider">MERCADO ARGENTINO</h2>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-sm">receipt_long</span>
+<span class="font-body-sm text-body-sm">CEDEARs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-sm">attach_money</span>
+<span class="font-body-sm text-body-sm">Dólar / Cotizaciones</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-sm">savings</span>
+<span class="font-body-sm text-body-sm">Plazo Fijo / Locales</span>
+</a>
+</nav>
+</div>
+</div>
+
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 ml-0 md:ml-64 mt-0 p-4 md:p-gutter flex flex-col min-h-screen">
+<!-- Header Section -->
+<header class="mb-stack-lg max-w-container-max mx-auto w-full">
+<div class="mb-stack-sm text-text-muted font-label-caps text-label-caps uppercase tracking-widest flex items-center gap-2">
+<span class="">FAF</span>
+<span class="w-1 h-1 rounded-full bg-text-muted"></span>
+<span class="">Panel de Decisiones</span>
+</div>
+<h1 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg-mobile md:font-headline-lg text-text-primary mb-2">
+                Criptomonedas
+            </h1>
+<p class="text-body-lg font-body-lg text-text-secondary max-w-2xl">
+                Recomendaciones activas derivadas de forma determinística por el framework argumentativo. Esta vista no contiene texto generado por IA.
+            </p>
+</header>
+<!-- Filters -->
+<div class="mb-stack-md max-w-container-max mx-auto w-full">
+<div class="inline-flex rounded-md border border-border-subtle bg-surface p-1">
+<button class="px-4 py-1.5 rounded text-sm font-label-caps text-label-caps bg-surface-container-high text-text-primary shadow-sm transition-colors">ALL</button>
+<button class="px-4 py-1.5 rounded text-sm font-label-caps text-label-caps text-text-muted hover:text-text-primary hover:bg-surface-container-lowest transition-colors">BUY</button>
+<button class="px-4 py-1.5 rounded text-sm font-label-caps text-label-caps text-text-muted hover:text-text-primary hover:bg-surface-container-lowest transition-colors">SELL</button>
+</div>
+</div>
+<!-- Grid Container -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-container-max mx-auto w-full pb-stack-lg flex-1">
+<!-- Card 1: BUY -->
+<article class="bg-surface-card border border-border-subtle rounded-lg p-6 flex flex-col hover:border-surface-variant transition-colors duration-200 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-6">
+<h2 class="text-headline-md font-headline-md text-text-primary">XRPUSDT</h2>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-buy-accent/10 border border-buy-accent/20 text-buy-accent font-label-caps text-label-caps">
+<span class="w-1.5 h-1.5 rounded-full bg-buy-accent"></span>
+                        BUY
+                    </span>
+</div>
+<!-- Gauge Visualization placeholder -->
+<div class="flex-1 flex flex-col items-center justify-center mb-6 relative h-32">
+<svg class="w-full max-w-[160px] h-auto overflow-visible" viewBox="0 0 100 50">
+<!-- Background Arc -->
+<path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#2D323B" stroke-linecap="round" stroke-width="4"></path>
+<!-- Center Point -->
+<circle cx="50" cy="50" fill="#e2e2e8" r="2"></circle>
+<!-- Current Value Needle (Green for Buy) -->
+<line stroke="#10B981" stroke-linecap="round" stroke-width="2" x1="50" x2="85" y1="50" y2="30"></line>
+<!-- Previous/Neutral Line -->
+<line stroke="#F43F5E" stroke-dasharray="2 2" stroke-linecap="round" stroke-width="1.5" x1="50" x2="50" y1="50" y2="15"></line>
+<!-- Theta Threshold Indicator -->
+<line stroke="#F59E0B" stroke-linecap="round" stroke-width="2" x1="78" x2="82" y1="20" y2="14"></line>
+</svg>
+</div>
+<div class="flex justify-between items-end mt-auto">
+<div class="flex flex-col">
+<span class="text-mono-data font-mono-data text-text-muted mb-2">gap 0.327</span>
+<!-- Sparkline SVG -->
+<svg class="w-24 h-8" preserveAspectRatio="none" viewBox="0 0 100 30">
+<polyline class="sparkline" points="0,25 10,20 15,22 25,10 35,15 45,5 50,18 60,12 70,25 80,18 90,22 100,10"></polyline>
+</svg>
+</div>
+<span class="text-mono-data font-mono-data text-text-muted flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">change_history</span> 0.67
+                    </span>
+</div>
+</article>
+<!-- Card 2: BUY -->
+<article class="bg-surface-card border border-border-subtle rounded-lg p-6 flex flex-col hover:border-surface-variant transition-colors duration-200 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-6">
+<h2 class="text-headline-md font-headline-md text-text-primary">ADAUSDT</h2>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-buy-accent/10 border border-buy-accent/20 text-buy-accent font-label-caps text-label-caps">
+<span class="w-1.5 h-1.5 rounded-full bg-buy-accent"></span>
+                        BUY
+                    </span>
+</div>
+<div class="flex-1 flex flex-col items-center justify-center mb-6 relative h-32">
+<svg class="w-full max-w-[160px] h-auto overflow-visible" viewBox="0 0 100 50">
+<path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#2D323B" stroke-linecap="round" stroke-width="4"></path>
+<circle cx="50" cy="50" fill="#e2e2e8" r="2"></circle>
+<line stroke="#10B981" stroke-linecap="round" stroke-width="2" x1="50" x2="88" y1="50" y2="38"></line>
+<line stroke="#F43F5E" stroke-dasharray="2 2" stroke-linecap="round" stroke-width="1.5" x1="50" x2="50" y1="50" y2="15"></line>
+<line stroke="#F59E0B" stroke-linecap="round" stroke-width="2" x1="78" x2="82" y1="20" y2="14"></line>
+</svg>
+</div>
+<div class="flex justify-between items-end mt-auto">
+<div class="flex flex-col">
+<span class="text-mono-data font-mono-data text-text-muted mb-2">gap 0.485</span>
+<svg class="w-24 h-8" preserveAspectRatio="none" viewBox="0 0 100 30">
+<polyline class="sparkline" points="0,20 15,15 25,25 35,18 45,28 55,22 65,28 75,20 85,25 100,15"></polyline>
+</svg>
+</div>
+<span class="text-mono-data font-mono-data text-text-muted flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">change_history</span> 0.67
+                    </span>
+</div>
+</article>
+<!-- Card 3: BUY -->
+<article class="bg-surface-card border border-border-subtle rounded-lg p-6 flex flex-col hover:border-surface-variant transition-colors duration-200 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-6">
+<h2 class="text-headline-md font-headline-md text-text-primary">AVAXUSDT</h2>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-buy-accent/10 border border-buy-accent/20 text-buy-accent font-label-caps text-label-caps">
+<span class="w-1.5 h-1.5 rounded-full bg-buy-accent"></span>
+                        BUY
+                    </span>
+</div>
+<div class="flex-1 flex flex-col items-center justify-center mb-6 relative h-32">
+<svg class="w-full max-w-[160px] h-auto overflow-visible" viewBox="0 0 100 50">
+<path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#2D323B" stroke-linecap="round" stroke-width="4"></path>
+<circle cx="50" cy="50" fill="#e2e2e8" r="2"></circle>
+<line stroke="#10B981" stroke-linecap="round" stroke-width="2" x1="50" x2="89" y1="50" y2="40"></line>
+<line stroke="#F43F5E" stroke-dasharray="2 2" stroke-linecap="round" stroke-width="1.5" x1="50" x2="50" y1="50" y2="15"></line>
+<line stroke="#F59E0B" stroke-linecap="round" stroke-width="2" x1="78" x2="82" y1="20" y2="14"></line>
+</svg>
+</div>
+<div class="flex justify-between items-end mt-auto">
+<div class="flex flex-col">
+<span class="text-mono-data font-mono-data text-text-muted mb-2">gap 0.499</span>
+<svg class="w-24 h-8" preserveAspectRatio="none" viewBox="0 0 100 30">
+<polyline class="sparkline" points="0,15 10,18 20,28 30,22 40,26 50,20 60,25 70,12 80,28 90,20 100,18"></polyline>
+</svg>
+</div>
+<span class="text-mono-data font-mono-data text-text-muted flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">change_history</span> 0.67
+                    </span>
+</div>
+</article>
+<!-- Card 4: SELL -->
+<article class="bg-surface-card border border-border-subtle rounded-lg p-6 flex flex-col hover:border-surface-variant transition-colors duration-200 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-6">
+<h2 class="text-headline-md font-headline-md text-text-primary">TONUSDT</h2>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sell-accent/10 border border-sell-accent/20 text-sell-accent font-label-caps text-label-caps">
+<span class="w-1.5 h-1.5 rounded-full bg-sell-accent"></span>
+                        SELL
+                    </span>
+</div>
+<div class="flex-1 flex flex-col items-center justify-center mb-6 relative h-32">
+<svg class="w-full max-w-[160px] h-auto overflow-visible" viewBox="0 0 100 50">
+<path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#2D323B" stroke-linecap="round" stroke-width="4"></path>
+<circle cx="50" cy="50" fill="#e2e2e8" r="2"></circle>
+<line stroke="#F43F5E" stroke-linecap="round" stroke-width="2" x1="50" x2="15" y1="50" y2="30"></line>
+<line stroke="#10B981" stroke-dasharray="2 2" stroke-linecap="round" stroke-width="1.5" x1="50" x2="50" y1="50" y2="15"></line>
+<line stroke="#F59E0B" stroke-linecap="round" stroke-width="2" x1="22" x2="18" y1="20" y2="14"></line>
+</svg>
+</div>
+<div class="flex justify-between items-end mt-auto">
+<div class="flex flex-col">
+<span class="text-mono-data font-mono-data text-text-muted mb-2">gap 0.494</span>
+<svg class="w-24 h-8" preserveAspectRatio="none" viewBox="0 0 100 30">
+<polyline class="sparkline" points="0,28 10,25 20,29 30,26 40,15 50,18 60,10 70,15 80,12 90,20 100,15"></polyline>
+</svg>
+</div>
+<span class="text-mono-data font-mono-data text-text-muted flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">change_history</span> 0.67
+                    </span>
+</div>
+</article>
+<!-- Card 5: BUY -->
+<article class="bg-surface-card border border-border-subtle rounded-lg p-6 flex flex-col hover:border-surface-variant transition-colors duration-200 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-6">
+<h2 class="text-headline-md font-headline-md text-text-primary">DOTUSDT</h2>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-buy-accent/10 border border-buy-accent/20 text-buy-accent font-label-caps text-label-caps">
+<span class="w-1.5 h-1.5 rounded-full bg-buy-accent"></span>
+                        BUY
+                    </span>
+</div>
+<div class="flex-1 flex flex-col items-center justify-center mb-6 relative h-32">
+<svg class="w-full max-w-[160px] h-auto overflow-visible" viewBox="0 0 100 50">
+<path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#2D323B" stroke-linecap="round" stroke-width="4"></path>
+<circle cx="50" cy="50" fill="#e2e2e8" r="2"></circle>
+<line stroke="#10B981" stroke-linecap="round" stroke-width="2" x1="50" x2="80" y1="50" y2="25"></line>
+<line stroke="#F43F5E" stroke-dasharray="2 2" stroke-linecap="round" stroke-width="1.5" x1="50" x2="50" y1="50" y2="15"></line>
+<line stroke="#F59E0B" stroke-linecap="round" stroke-width="2" x1="78" x2="82" y1="20" y2="14"></line>
+</svg>
+</div>
+<div class="flex justify-between items-end mt-auto">
+<div class="flex flex-col">
+<span class="text-mono-data font-mono-data text-text-muted mb-2">gap 0.313</span>
+<svg class="w-24 h-8" preserveAspectRatio="none" viewBox="0 0 100 30">
+<polyline class="sparkline" points="0,20 15,18 25,25 35,22 45,28 55,25 65,26 75,18 85,28 100,20"></polyline>
+</svg>
+</div>
+<span class="text-mono-data font-mono-data text-text-muted flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">change_history</span> 0.67
+                    </span>
+</div>
+</article>
+<!-- Card 6: SELL -->
+<article class="bg-surface-card border border-border-subtle rounded-lg p-6 flex flex-col hover:border-surface-variant transition-colors duration-200 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-6">
+<h2 class="text-headline-md font-headline-md text-text-primary">LTCUSDT</h2>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sell-accent/10 border border-sell-accent/20 text-sell-accent font-label-caps text-label-caps">
+<span class="w-1.5 h-1.5 rounded-full bg-sell-accent"></span>
+                        SELL
+                    </span>
+</div>
+<div class="flex-1 flex flex-col items-center justify-center mb-6 relative h-32">
+<svg class="w-full max-w-[160px] h-auto overflow-visible" viewBox="0 0 100 50">
+<path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#2D323B" stroke-linecap="round" stroke-width="4"></path>
+<circle cx="50" cy="50" fill="#e2e2e8" r="2"></circle>
+<line stroke="#F43F5E" stroke-linecap="round" stroke-width="2" x1="50" x2="25" y1="50" y2="20"></line>
+<line stroke="#10B981" stroke-dasharray="2 2" stroke-linecap="round" stroke-width="1.5" x1="50" x2="50" y1="50" y2="15"></line>
+<line stroke="#F59E0B" stroke-linecap="round" stroke-width="2" x1="22" x2="18" y1="20" y2="14"></line>
+</svg>
+</div>
+<div class="flex justify-between items-end mt-auto">
+<div class="flex flex-col">
+<span class="text-mono-data font-mono-data text-text-muted mb-2">gap 0.381</span>
+<svg class="w-24 h-8" preserveAspectRatio="none" viewBox="0 0 100 30">
+<polyline class="sparkline" points="0,25 10,28 20,22 30,28 40,15 50,22 60,18 70,12 80,25 90,18 100,22"></polyline>
+</svg>
+</div>
+<span class="text-mono-data font-mono-data text-text-muted flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">change_history</span> 0.67
+                    </span>
+</div>
+</article>
+<!-- Card 7: BUY -->
+<article class="bg-surface-card border border-border-subtle rounded-lg p-6 flex flex-col hover:border-surface-variant transition-colors duration-200 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-6">
+<h2 class="text-headline-md font-headline-md text-text-primary">UNIUSDT</h2>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-buy-accent/10 border border-buy-accent/20 text-buy-accent font-label-caps text-label-caps">
+<span class="w-1.5 h-1.5 rounded-full bg-buy-accent"></span>
+                        BUY
+                    </span>
+</div>
+<div class="flex-1 flex flex-col items-center justify-center mb-6 relative h-32">
+<svg class="w-full max-w-[160px] h-auto overflow-visible" viewBox="0 0 100 50">
+<path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#2D323B" stroke-linecap="round" stroke-width="4"></path>
+<circle cx="50" cy="50" fill="#e2e2e8" r="2"></circle>
+<line stroke="#10B981" stroke-linecap="round" stroke-width="2" x1="50" x2="82" y1="50" y2="28"></line>
+<line stroke="#F43F5E" stroke-dasharray="2 2" stroke-linecap="round" stroke-width="1.5" x1="50" x2="50" y1="50" y2="15"></line>
+<line stroke="#F59E0B" stroke-linecap="round" stroke-width="2" x1="78" x2="82" y1="20" y2="14"></line>
+</svg>
+</div>
+<div class="flex justify-between items-end mt-auto">
+<div class="flex flex-col">
+<span class="text-mono-data font-mono-data text-text-muted mb-2">gap 0.278</span>
+<svg class="w-24 h-8" preserveAspectRatio="none" viewBox="0 0 100 30">
+<polyline class="sparkline" points="0,22 10,18 20,28 30,25 40,20 50,22 60,28 70,20 80,25 90,22 100,18"></polyline>
+</svg>
+</div>
+<span class="text-mono-data font-mono-data text-text-muted flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">change_history</span> 0.67
+                    </span>
+</div>
+</article>
+<!-- Card 8: BUY -->
+<article class="bg-surface-card border border-border-subtle rounded-lg p-6 flex flex-col hover:border-surface-variant transition-colors duration-200 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-6">
+<h2 class="text-headline-md font-headline-md text-text-primary">ATOMUSDT</h2>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-buy-accent/10 border border-buy-accent/20 text-buy-accent font-label-caps text-label-caps">
+<span class="w-1.5 h-1.5 rounded-full bg-buy-accent"></span>
+                        BUY
+                    </span>
+</div>
+<div class="flex-1 flex flex-col items-center justify-center mb-6 relative h-32">
+<svg class="w-full max-w-[160px] h-auto overflow-visible" viewBox="0 0 100 50">
+<path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#2D323B" stroke-linecap="round" stroke-width="4"></path>
+<circle cx="50" cy="50" fill="#e2e2e8" r="2"></circle>
+<line stroke="#10B981" stroke-linecap="round" stroke-width="2" x1="50" x2="88" y1="50" y2="42"></line>
+<line stroke="#F43F5E" stroke-dasharray="2 2" stroke-linecap="round" stroke-width="1.5" x1="50" x2="50" y1="50" y2="15"></line>
+<line stroke="#F59E0B" stroke-linecap="round" stroke-width="2" x1="78" x2="82" y1="20" y2="14"></line>
+</svg>
+</div>
+<div class="flex justify-between items-end mt-auto">
+<div class="flex flex-col">
+<span class="text-mono-data font-mono-data text-text-muted mb-2">gap 0.491</span>
+<svg class="w-24 h-8" preserveAspectRatio="none" viewBox="0 0 100 30">
+<polyline class="sparkline" points="0,18 10,15 20,20 30,22 40,25 50,26 60,22 70,28 80,25 90,28 100,20"></polyline>
+</svg>
+</div>
+<span class="text-mono-data font-mono-data text-text-muted flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">change_history</span> 0.67
+                    </span>
+</div>
+</article>
+</div>
+</main>
+<!-- Footer -->
+<footer class="fixed bottom-0 right-0 left-0 md:left-64 py-4 bg-surface-container-lowest dark:bg-surface-container-lowest border-t border-border-subtle z-30">
+<div class="flex flex-col md:flex-row justify-between items-center px-4 md:px-gutter w-full text-xs max-w-container-max mx-auto gap-4"><div class="text-text-muted font-mono-data text-mono-data text-center w-full leading-relaxed px-4">Las recomendaciones emitidas por este sistema son de carácter informativo y educativo. Los resultados se basan en el Marco Argumentativo Financiero (FAF) y no constituyen asesoría financiera personalizada. <br class="hidden md:block"> <span class="text-primary font-bold mt-2 inline-block">FAF - Marco Argumentativo Financiero - Desarrollado por Javier M. Debórtoli.</span></div></div>
+</footer>
+
+
+</body></html>
