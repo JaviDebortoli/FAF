@@ -244,7 +244,7 @@ test.describe('Tier 1 — card grid', () => {
     // during this test reach a real Claude call.
     await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
 
-    await page.goto('/');
+    await page.goto('/dashboard/crypto');
 
     const btcCard = page.getByTestId('decision-card-BTCUSDT');
     const ethCard = page.getByTestId('decision-card-ETHUSDT');
@@ -258,6 +258,28 @@ test.describe('Tier 1 — card grid', () => {
 });
 
 // ---------------------------------------------------------------------------
+// `market-nav-redesign` Phase 1 (PR1), task 1.6 — bare `/dashboard` MUST NOT
+// 404 and MUST land the user on the working crypto view (design.md "Bare
+// `/dashboard` resolves via `redirect()`"; specs/market-navigation/spec.md
+// "Bare /dashboard never 404s"; specs/decision-dashboard/spec.md "Bare
+// /dashboard redirects to the canonical route").
+// ---------------------------------------------------------------------------
+
+test.describe('Bare /dashboard redirect', () => {
+  test('navigating to bare /dashboard lands on the crypto view, never a 404', async ({ page }) => {
+    await stubDecisions(page, MULTI_ASSET_REPORT);
+    await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
+
+    const response = await page.goto('/dashboard');
+    expect(response?.status()).toBeLessThan(400);
+
+    await expect(page).toHaveURL(/\/dashboard\/crypto$/);
+    await expect(page.getByTestId('decision-card-BTCUSDT')).toBeVisible();
+    await expect(page.getByTestId('decision-card-BTCUSDT')).toContainText('BUY');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Task 6.2 — all-NO_RECOMMENDATION fixture -> explicit empty state
 // ---------------------------------------------------------------------------
 
@@ -266,7 +288,7 @@ test.describe('Tier 1 — empty states', () => {
     await stubDecisions(page, ALL_NO_RECOMMENDATION_REPORT);
     await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
 
-    await page.goto('/');
+    await page.goto('/dashboard/crypto');
 
     const empty = page.getByTestId('empty-state');
     await expect(empty).toBeVisible();
@@ -287,7 +309,7 @@ test.describe('Tier 1 — no-data state', () => {
   }) => {
     await stubDecisionsUnavailable(page);
 
-    await page.goto('/');
+    await page.goto('/dashboard/crypto');
 
     const unavailable = page.getByTestId('service-unavailable');
     await expect(unavailable).toBeVisible();
@@ -312,7 +334,7 @@ test.describe('Tier 1 — direction filter', () => {
     await stubDecisions(page, MULTI_ASSET_REPORT);
     await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
 
-    await page.goto('/');
+    await page.goto('/dashboard/crypto');
 
     const btcCard = page.getByTestId('decision-card-BTCUSDT');
     const ethCard = page.getByTestId('decision-card-ETHUSDT');
@@ -347,7 +369,7 @@ test.describe('Tier 1 — direction filter', () => {
     await stubDecisions(page, buyOnlyReport);
     await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
 
-    await page.goto('/');
+    await page.goto('/dashboard/crypto');
     await expect(page.getByTestId('decision-card-BTCUSDT')).toBeVisible();
 
     await page.getByTestId('direction-filter-SELL').click();
@@ -368,7 +390,7 @@ test.describe('Tier 2 — drill-down graph', () => {
     await stubDecisions(page, MULTI_ASSET_REPORT);
     await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
 
-    await page.goto('/');
+    await page.goto('/dashboard/crypto');
     await page.getByTestId('decision-card-BTCUSDT').click();
 
     const panel = page.getByTestId('drilldown-panel-BTCUSDT');
@@ -414,7 +436,7 @@ test.describe('Tier 2 — lazy narrative fetch', () => {
       });
     });
 
-    await page.goto('/');
+    await page.goto('/dashboard/crypto');
     await expect(page.getByTestId('decision-card-BTCUSDT')).toBeVisible();
 
     // No drilldown opened yet — zero narrative requests.
@@ -446,7 +468,7 @@ test.describe('Tier 2 — narrative disclaimer', () => {
       'BTCUSDT muestra un balance alcista: dos reglas de soporte compraron dominancia sobre una senal bajista aislada.',
     );
 
-    await page.goto('/');
+    await page.goto('/dashboard/crypto');
     await page.getByTestId('decision-card-BTCUSDT').click();
 
     const panel = page.getByTestId('narrative-panel');
@@ -470,7 +492,7 @@ test.describe('Tier 2 — graceful degradation', () => {
     await stubDecisions(page, MULTI_ASSET_REPORT);
     await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
 
-    await page.goto('/');
+    await page.goto('/dashboard/crypto');
     await page.getByTestId('decision-card-BTCUSDT').click();
 
     const panel = page.getByTestId('drilldown-panel-BTCUSDT');
@@ -493,7 +515,7 @@ test.describe('Tier 2 — graceful degradation', () => {
     await stubDecisions(page, MULTI_ASSET_REPORT);
     await stubNarrativeError(page, 502, 'UPSTREAM_ERROR');
 
-    await page.goto('/');
+    await page.goto('/dashboard/crypto');
     await page.getByTestId('decision-card-BTCUSDT').click();
 
     const panel = page.getByTestId('drilldown-panel-BTCUSDT');
@@ -516,7 +538,7 @@ test.describe('Tier 1/2 boundary', () => {
     await stubDecisions(page, MULTI_ASSET_REPORT);
     await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
 
-    await page.goto('/');
+    await page.goto('/dashboard/crypto');
     await expect(page.getByTestId('decision-card-BTCUSDT')).toBeVisible();
 
     await expect(page.locator('[data-testid^="graph-node-"]')).toHaveCount(0);
