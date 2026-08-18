@@ -125,3 +125,67 @@ test.describe('No new CDN/font dependency', () => {
     await expect(head.locator('script[src^="http"]')).toHaveCount(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// `market-nav-redesign` Phase 3 (PR3), task 3.1 — placeholder-market pages.
+// specs/market-navigation/spec.md "Per-market routing" + "Placeholder-market
+// page" requirements: clicking a non-crypto sidebar link navigates to a real
+// `/dashboard/{slug}` route rendering a shared, honest "próximamente"
+// placeholder — Spanish copy, `role="status"`, no CTA/interest-capture, and a
+// `data-testid` distinct from both `empty-state` and `service-unavailable`.
+// `/dashboard/crypto` must keep resolving to the real dashboard (static route
+// precedence over the new dynamic `[market]` segment), and an unknown slug
+// must 404 via `notFound()`, never crash or silently render a placeholder.
+// ---------------------------------------------------------------------------
+
+test.describe('Placeholder-market pages', () => {
+  test('clicking Acciones navigates to /dashboard/acciones and renders the placeholder', async ({ page }) => {
+    await gotoCrypto(page);
+
+    const nav = page.getByRole('navigation', { name: 'Mercados' });
+    await nav.getByTestId('sidebar-link-acciones').click();
+
+    await expect(page).toHaveURL(/\/dashboard\/acciones$/);
+
+    const placeholder = page.getByTestId('market-placeholder');
+    await expect(placeholder).toBeVisible();
+    await expect(placeholder).toHaveAttribute('role', 'status');
+    await expect(placeholder).toContainText('Acciones');
+    await expect(placeholder).toContainText('no está disponible');
+
+    await expect(page.getByTestId('empty-state')).toHaveCount(0);
+    await expect(page.getByTestId('service-unavailable')).toHaveCount(0);
+  });
+
+  test('placeholder page has zero CTA / interest-capture affordances', async ({ page }) => {
+    await gotoCrypto(page);
+
+    const nav = page.getByRole('navigation', { name: 'Mercados' });
+    await nav.getByTestId('sidebar-link-forex').click();
+    await expect(page).toHaveURL(/\/dashboard\/forex$/);
+
+    const placeholder = page.getByTestId('market-placeholder');
+    await expect(placeholder).toBeVisible();
+
+    await expect(placeholder.locator('a')).toHaveCount(0);
+    await expect(placeholder.locator('button')).toHaveCount(0);
+    await expect(placeholder.locator('form')).toHaveCount(0);
+    await expect(placeholder.locator('input')).toHaveCount(0);
+  });
+
+  test('/dashboard/crypto still renders the real dashboard, not the placeholder (static route precedence)', async ({
+    page,
+  }) => {
+    await gotoCrypto(page);
+
+    await expect(page.getByTestId('market-placeholder')).toHaveCount(0);
+    await expect(page.locator('main')).toContainText('Recomendaciones activas');
+  });
+
+  test('an unknown market slug resolves to a 404, not a crash or a placeholder', async ({ page }) => {
+    const response = await page.goto('/dashboard/not-a-real-market');
+
+    expect(response?.status()).toBe(404);
+    await expect(page.getByTestId('market-placeholder')).toHaveCount(0);
+  });
+});
