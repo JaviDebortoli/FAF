@@ -19,7 +19,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <div className="flex-1 md:pl-64">{children}</div>
+      <div className="flex-1 pb-48 md:pl-64">{children}</div>
+      <footer
+        data-testid="dashboard-footer"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-zinc-800 bg-zinc-950 py-4 md:left-64"
+      >
+        <div className="mx-auto max-w-6xl px-6 text-center font-mono text-xs leading-relaxed text-muted">
+          <p>
+            Las recomendaciones emitidas por este sistema son de carácter informativo y educativo. Los resultados
+            se basan en el Marco Argumentativo Financiero (FAF) y no constituyen asesoría financiera personalizada.
+          </p>
+          <p className="mt-2 font-bold text-zinc-50">
+            FAF - Marco Argumentativo Financiero - Desarrollado por Javier M. Debórtoli.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

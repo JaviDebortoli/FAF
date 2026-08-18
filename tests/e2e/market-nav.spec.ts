@@ -51,6 +51,70 @@ async function gotoCrypto(page: Page) {
   await page.goto('/dashboard/crypto');
 }
 
+// ---------------------------------------------------------------------------
+// `dashboard-shell-branding` — sidebar branding block + shared shell footer.
+// specs/market-navigation/spec.md "Sidebar navigation shell" (MODIFIED) +
+// "Shared shell footer" (ADDED): a branding header ("Plataforma FAF" +
+// subtitle) renders as the first element above the market groups in both
+// the desktop nav and the mobile drawer; one shared footer (exact copy)
+// renders on every `/dashboard/*` route, the old "Trabajo de tesis" footer
+// is fully removed, and the fixed footer never overlaps page content.
+// ---------------------------------------------------------------------------
+
+test.describe('Sidebar branding', () => {
+  test('desktop nav shows "Plataforma FAF" + subtitle above the market groups', async ({ page }) => {
+    await gotoCrypto(page);
+    const branding = page.getByTestId('sidebar-desktop-nav').getByTestId('sidebar-branding');
+    await expect(branding).toBeVisible();
+    await expect(branding.getByRole('heading', { name: 'Plataforma FAF' })).toBeVisible();
+    await expect(branding).toContainText('Recomendaciones financieras explicables en tiempo real');
+  });
+});
+
+test.describe('Shared dashboard footer', () => {
+  test('renders identical footer copy on /dashboard/crypto and a placeholder-market route', async ({ page }) => {
+    await gotoCrypto(page);
+    const footer = page.getByTestId('dashboard-footer');
+    await expect(footer).toContainText('carácter informativo y educativo');
+    await expect(footer).toContainText('Desarrollado por Javier M. Debórtoli.');
+    const cryptoFooterText = await footer.innerText();
+
+    await page.goto('/dashboard/acciones');
+    // `toHaveText()` compares against `textContent` (whitespace-collapsed,
+    // no line breaks between block-level <p> elements), while `innerText()`
+    // reflects rendering and inserts a line break between paragraphs — the
+    // two are not directly comparable via `toHaveText`. Compare two
+    // `innerText()` reads directly instead to prove the footer is byte-
+    // identical across routes.
+    await expect.poll(() => page.getByTestId('dashboard-footer').innerText()).toBe(cryptoFooterText);
+  });
+
+  test('old crypto-only thesis footer text is gone everywhere', async ({ page }) => {
+    await gotoCrypto(page);
+    await expect(page.getByText(/Trabajo de tesis/)).toHaveCount(0);
+    await page.goto('/dashboard/acciones');
+    await expect(page.getByText(/Trabajo de tesis/)).toHaveCount(0);
+  });
+
+  // NOTE: `.boundingBox()` on a `position:fixed` element adds scroll offset
+  // in Playwright and is unreliable across scroll. Compare
+  // `getBoundingClientRect()` (viewport-relative) for both elements inside
+  // one `page.evaluate`, after scrolling to the bottom, instead.
+  for (const viewport of [{ width: 1280, height: 800 }, { width: 375, height: 812 }]) {
+    test(`footer never overlaps content at ${viewport.width}px`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await gotoCrypto(page);
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      const overlaps = await page.evaluate(() => {
+        const main = document.querySelector('main')!;
+        const footer = document.querySelector('[data-testid="dashboard-footer"]')!;
+        return main.getBoundingClientRect().bottom > footer.getBoundingClientRect().top;
+      });
+      expect(overlaps).toBe(false);
+    });
+  }
+});
+
 test.describe('Sidebar — group order', () => {
   test('renders both groups with the corrected 7+3 item grouping/order', async ({ page }) => {
     await gotoCrypto(page);
@@ -213,6 +277,14 @@ test.describe('Mobile navigation drawer', () => {
 
       await expect(page.getByTestId('sidebar-mobile-toggle')).toBeVisible();
       await expect(page.getByTestId('sidebar-desktop-nav')).toBeHidden();
+    });
+
+    test('drawer also shows the "Plataforma FAF" branding block', async ({ page }) => {
+      await gotoCrypto(page);
+      await page.getByTestId('sidebar-mobile-toggle').click();
+      const branding = page.getByTestId('sidebar-mobile-drawer').getByTestId('sidebar-branding');
+      await expect(branding).toBeVisible();
+      await expect(branding).toContainText('Plataforma FAF');
     });
 
     test('clicking the hamburger opens the drawer listing the same groups/markets/order as desktop', async ({
