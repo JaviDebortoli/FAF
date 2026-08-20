@@ -1,4 +1,6 @@
 import { OverviewClient } from '@/app/(dashboard)/components/OverviewClient';
+import { DashboardHeader } from '@/app/(dashboard)/components/DashboardHeader';
+import { MARKETS } from '@/app/(dashboard)/lib/markets';
 
 /**
  * `market-nav-redesign` design.md — moved verbatim from `app/(dashboard)/page.tsx`
@@ -27,16 +29,19 @@ import { OverviewClient } from '@/app/(dashboard)/components/OverviewClient';
  * visualization confined to Tier 2").
  */
 export default function CryptoDashboardPage() {
+  // `noUncheckedIndexedAccess` (tsconfig.json) types `MARKETS.crypto` as
+  // possibly `undefined` even for this literal, statically-guaranteed key —
+  // same defensive-guard convention `Sidebar.tsx`'s `MarketLinkGroups` uses
+  // for `MARKETS[slug]`, not a non-null assertion (see apply-progress
+  // "Deviations from Design").
+  const cryptoMarket = MARKETS.crypto;
+  if (!cryptoMarket) {
+    throw new Error('MARKETS.crypto is missing from the market catalog');
+  }
+
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 py-10">
-      <header className="flex flex-col gap-2 border-b border-zinc-800 pb-6">
-        <span className="font-mono text-xs uppercase tracking-[0.3em] text-muted">FAF · Panel de decisiones</span>
-        <h1 className="text-2xl font-semibold text-zinc-50">Recomendaciones activas</h1>
-        <p className="max-w-2xl text-sm text-zinc-400">
-          Cada tarjeta muestra una recomendación BUY/SELL derivada de forma determinística por el
-          framework argumentativo. Esta vista no contiene texto generado por IA.
-        </p>
-      </header>
+      <DashboardHeader title={cryptoMarket.label} showDisclaimer />
 
       <OverviewClient />
     </main>
