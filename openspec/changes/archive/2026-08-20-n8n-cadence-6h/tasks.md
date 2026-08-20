@@ -48,4 +48,4 @@ Chain strategy: pending
 
 ## Phase 5: Manual Verification Handoff (do NOT check off during sdd-apply)
 
-- [ ] 5.1 **[MANUAL-VERIFICATION-ONLY]** Live 6h schedule fires correctly in production: the imported workflow runs unattended across at least one full 6h interval in the user's live n8n instance and completes a cycle. Not automatable — no live n8n execution/scheduling harness exists in this repo. Per this project's manual-verification-gate norm (established in `n8n-fetch-klines-item-fix`), this item MUST stay unchecked and open until the user explicitly confirms the live run; `sdd-verify`/`sdd-archive` MUST NOT mark this change PASS without that confirmation.
+- [x] 5.1 **[MANUAL-VERIFICATION-ONLY]** Live 6h schedule fires correctly in production: the imported workflow runs unattended across at least one full 6h interval in the user's live n8n instance and completes a cycle. **CONFIRMED by user, 2026-08-20**, verbatim (Spanish): "Ya confirmé el ciclo de 6hs, cierra el SDD" (= "I already confirmed the 6h cycle, close the SDD"). This satisfies the scenario's GIVEN/WHEN/THEN — a full 6h interval fired and completed a cycle in the user's live n8n instance.
