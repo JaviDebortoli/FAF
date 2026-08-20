@@ -56,7 +56,7 @@ confirms the zero-test-edit claim instead of assuming it.
 
 ## Phase 4: Manual Verification Handoff (do NOT check off during sdd-apply)
 
-- [ ] 4.1 **[MANUAL-VERIFICATION-ONLY]** Live production confirmation: user loads the dashboard at
+- [x] 4.1 **[MANUAL-VERIFICATION-ONLY]** Live production confirmation: user loads the dashboard at
   various points across a normal, live, unattended 6h n8n inter-run window (including near the end
   of the window) and confirms "Servicio momentáneamente no disponible" no longer appears solely due
   to presentation-cache TTL expiry. Not automatable — no live multi-hour n8n execution/scheduling
@@ -64,3 +64,8 @@ confirms the zero-test-edit claim instead of assuming it.
   norm (established in `n8n-cadence-6h` task 5.1, `narrative-model-haiku` task 5.1), this item MUST
   stay unchecked and open until the user explicitly confirms; `sdd-verify`/`sdd-archive` MUST NOT mark
   this change PASS without that confirmation.
+  **CONFIRMED 2026-08-20**: User stated verbatim (Spanish): "Ya confirmé, cierra el SDD" (= "I already
+  confirmed, close the SDD"), relayed to `sdd-archive` in the orchestrator's launch prompt as an
+  explicit final-state fact — a live confirmation given directly to the orchestrator after
+  `sdd-verify` had already persisted its report. Reconciled exceptionally at archive time per the
+  same pattern used to close `narrative-model-haiku` task 5.1 and `n8n-cadence-6h` task 5.1.
