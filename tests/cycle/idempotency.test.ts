@@ -3,17 +3,17 @@ import { runCycle } from '@/src/cycle/runCycle';
 import candles from '../fixtures/paper-example/candles.json';
 import type { Candle } from '@/src/domain/types';
 
-// Codifies design.md's D-B decision explicitly: n8n polls every 1-5 minutes
-// against 1h candles, so most cycles run against the SAME in-progress
-// candle set. runCycle MUST therefore be idempotent for byte-identical
-// input — recompute is always safe, by construction, because runCycle
-// reads no wall clock and derives every output timestamp from the input
-// candles themselves (see src/cycle/runCycle.ts's `latestTimestamp` /
-// `computeCycleId`). This is the property that makes the presentation-only
-// cache in src/cycle/latest.ts (task 6.2) safe: a cache MISS never changes
-// the answer, only the latency. See docs/architecture-notes.md for the
-// full rationale (chosen over aligning n8n's cron cadence to candle-close
-// boundaries).
+// Codifies design.md's D-B decision explicitly: runCycle MUST be idempotent
+// for byte-identical input regardless of n8n's polling cadence (now 6h,
+// reduced from an earlier finer interval for budget reasons) -- recompute is
+// always safe, by construction, because runCycle reads no wall clock and
+// derives every output timestamp from the input candles themselves (see
+// src/cycle/runCycle.ts's `latestTimestamp` / `computeCycleId`). This is the
+// property that makes the presentation-only cache in src/cycle/latest.ts
+// (task 6.2) safe: a cache MISS never changes the answer, only the latency.
+// See docs/architecture-notes.md for the full rationale (the limit=50 fetch
+// window covers the ~6 candles that land per 6h cycle; idempotency is the
+// secondary backstop, not the reason the cadence is safe).
 
 describe('runCycle idempotency (design.md D-B)', () => {
   it('produces a byte-identical DecisionReport for two calls with identical input klines', () => {

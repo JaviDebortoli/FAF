@@ -54,7 +54,7 @@ El sistema debe incluir un flujo de proceso que tome la traza del grafo y genere
 ## Requerimientos de Implementación (Format)
 - Backend: Next.js. 
 - Frontend: Angular, librerías de visualización de grafos (para mostrar la trazabilidad).
-- Automatización: n8n con Schedule Trigger cada 1-5 minutos. 
+- Automatización: n8n con Schedule Trigger cada 6 horas. 
 - Deployment: Repositorio en GitHub sincronizado con Vercel.
 
 ## Definición de Hechos y Reglas (Base de Conocimiento)

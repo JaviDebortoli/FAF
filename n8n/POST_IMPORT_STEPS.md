@@ -11,7 +11,7 @@ Import `n8n/faf-workflow.json` into n8n 2.34.6. There should be no import error,
 should show exactly **6 nodes in one straight chain**:
 
 ```
-Schedule Trigger (1-5min) -> Symbols -> Fetch Klines -> Set Symbol -> Aggregate (build /api/cycle payload) -> POST /api/cycle
+Schedule Trigger (6h) -> Symbols -> Fetch Klines -> Set Symbol -> Aggregate (build /api/cycle payload) -> POST /api/cycle
 ```
 
 There is **no `Merge Assets` node** — the single-pipeline refactor removed it along with the 3
