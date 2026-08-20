@@ -108,7 +108,7 @@ describe('streamNarrative — stream-delta forwarding', () => {
 });
 
 describe('streamNarrative — call shape', () => {
-  it('calls messages.stream with claude-opus-5, adaptive thinking, low effort, the static system prompt, and the JSON-serialized facts', async () => {
+  it('calls messages.stream with claude-haiku-4-5, no thinking, no output_config, the static system prompt, and the JSON-serialized facts', async () => {
     streamMock.mockReturnValue(fakeAnthropicStream([]));
     const { streamNarrative } = await import('@/src/narrative/client');
     const { NARRATIVE_SYSTEM_PROMPT, buildUserMessage } = await import('@/src/narrative/prompt');
@@ -118,10 +118,8 @@ describe('streamNarrative — call shape', () => {
 
     expect(streamMock).toHaveBeenCalledTimes(1);
     expect(streamMock).toHaveBeenCalledWith({
-      model: 'claude-opus-5',
+      model: 'claude-haiku-4-5',
       max_tokens: 4096,
-      thinking: { type: 'adaptive' },
-      output_config: { effort: 'low' },
       system: NARRATIVE_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: buildUserMessage(FACTS) }],
     });
