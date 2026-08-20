@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { MARKETS } from '@/app/(dashboard)/lib/markets';
 import { MarketPlaceholder } from '@/app/(dashboard)/components/MarketPlaceholder';
+import { DashboardHeader } from '@/app/(dashboard)/components/DashboardHeader';
 
 /**
  * `market-nav-redesign` design.md "One dynamic segment `[market]/page.tsx`
@@ -28,10 +29,7 @@ export default async function MarketPlaceholderPage({ params }: { params: Promis
 
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 py-10">
-      <header className="flex flex-col gap-2 border-b border-zinc-800 pb-6">
-        <span className="font-mono text-xs uppercase tracking-[0.3em] text-muted">FAF · Panel de decisiones</span>
-        <h1 className="text-2xl font-semibold text-zinc-50">{market.label}</h1>
-      </header>
+      <DashboardHeader title={market.label} showDisclaimer />
 
       <MarketPlaceholder marketLabel={market.label} />
     </main>

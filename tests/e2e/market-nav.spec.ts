@@ -115,6 +115,50 @@ test.describe('Shared dashboard footer', () => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// `dashboard-header-copy-consistency` — shared `DashboardHeader` eyebrow +
+// disclaimer, closing the sdd-verify coverage gap (verify-report.md CRITICAL
+// finding): specs/market-navigation/spec.md "Dashboard eyebrow copy is
+// consistent across market views" + "Determinism disclaimer appears on every
+// market view" both require exact/byte-for-byte copy on EVERY /dashboard/*
+// view, not a substring match — a `toContainText('Criptomonedas')` check
+// elsewhere would still pass even if the old "FAF · " prefix silently
+// returned, so these assert the eyebrow's exact text via `toHaveText` (whole
+// element content, not substring) plus a negative `FAF` check for defense in
+// depth. Mirrors the "Shared dashboard footer" describe block above (same
+// cross-route consistency pattern: crypto vs. a placeholder-market route).
+// ---------------------------------------------------------------------------
+
+test.describe('Dashboard header — eyebrow & disclaimer', () => {
+  test('crypto view eyebrow reads exactly "Panel de decisiones", no "FAF" prefix', async ({ page }) => {
+    await gotoCrypto(page);
+
+    const eyebrow = page.locator('main header span');
+    await expect(eyebrow).toHaveText('Panel de decisiones');
+    await expect(eyebrow).not.toContainText('FAF');
+  });
+
+  test('placeholder-market view eyebrow matches crypto — exactly "Panel de decisiones"', async ({ page }) => {
+    await gotoCrypto(page);
+
+    const nav = page.getByRole('navigation', { name: 'Mercados' });
+    await nav.getByTestId('sidebar-link-forex').click();
+    await expect(page).toHaveURL(/\/dashboard\/forex$/);
+
+    const eyebrow = page.locator('main header span');
+    await expect(eyebrow).toHaveText('Panel de decisiones');
+    await expect(eyebrow).not.toContainText('FAF');
+  });
+
+  test('crypto view shows the determinism disclaimer', async ({ page }) => {
+    await gotoCrypto(page);
+
+    await expect(page.locator('main')).toContainText(
+      'Cada tarjeta muestra una recomendación BUY/SELL derivada de forma determinística por el framework argumentativo. Esta vista no contiene texto generado por IA.',
+    );
+  });
+});
+
 test.describe('Sidebar — group order', () => {
   test('renders both groups with the corrected 7+3 item grouping/order', async ({ page }) => {
     await gotoCrypto(page);
@@ -243,7 +287,7 @@ test.describe('Placeholder-market pages', () => {
     await gotoCrypto(page);
 
     await expect(page.getByTestId('market-placeholder')).toHaveCount(0);
-    await expect(page.locator('main')).toContainText('Recomendaciones activas');
+    await expect(page.locator('main')).toContainText('Criptomonedas');
   });
 
   test('an unknown market slug resolves to a 404, not a crash or a placeholder', async ({ page }) => {
@@ -251,6 +295,18 @@ test.describe('Placeholder-market pages', () => {
 
     expect(response?.status()).toBe(404);
     await expect(page.getByTestId('market-placeholder')).toHaveCount(0);
+  });
+
+  test('placeholder-market page shows the determinism disclaimer, identical to crypto', async ({ page }) => {
+    await gotoCrypto(page);
+
+    const nav = page.getByRole('navigation', { name: 'Mercados' });
+    await nav.getByTestId('sidebar-link-forex').click();
+    await expect(page).toHaveURL(/\/dashboard\/forex$/);
+
+    await expect(page.locator('main')).toContainText(
+      'Cada tarjeta muestra una recomendación BUY/SELL derivada de forma determinística por el framework argumentativo. Esta vista no contiene texto generado por IA.',
+    );
   });
 });
 
@@ -345,7 +401,7 @@ test.describe('Mobile navigation drawer', () => {
       await gotoCrypto(page);
 
       await expect(page.getByTestId('sidebar-mobile-drawer')).toHaveCount(0);
-      await expect(page.locator('main')).toContainText('Recomendaciones activas');
+      await expect(page.locator('main')).toContainText('Criptomonedas');
       await expect(page.getByTestId('direction-filter-ALL')).toBeVisible();
     });
   });
