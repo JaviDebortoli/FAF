@@ -46,4 +46,4 @@ Chain strategy: pending
 
 ## Phase 4: Spec Delta (deferred to `sdd-archive`)
 
-- [ ] 4.1 Defer merging `openspec/changes/inicio-content-polish/specs/decision-dashboard/spec.md`'s MODIFIED "Crypto dashboard route under market navigation" requirement into `openspec/specs/decision-dashboard/spec.md` to `sdd-archive`, per this repo's established convention (confirmed precedent: `inicio-home-section` and every other MODIFIED-requirement change this session). No action during `sdd-apply`.
+- [x] 4.1 Defer merging `openspec/changes/inicio-content-polish/specs/decision-dashboard/spec.md`'s MODIFIED "Crypto dashboard route under market navigation" requirement into `openspec/specs/decision-dashboard/spec.md` to `sdd-archive`, per this repo's established convention (confirmed precedent: `inicio-home-section` and every other MODIFIED-requirement change this session). No action during `sdd-apply`. Completed by `sdd-archive` on 2026-08-21: merged into the live main spec (single `(Previously: ...)` line overwritten, per convention).
