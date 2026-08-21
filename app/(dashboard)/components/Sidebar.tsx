@@ -56,6 +56,38 @@ function MarketLinkGroups({ activeSlug, onLinkClick }: { activeSlug: string; onL
 }
 
 /**
+ * `inicio-home-section` design.md "Interfaces / Contracts" — the sidebar's
+ * "Inicio" entry, styled identically to a market link (same className/
+ * active-state pattern as `MarketLinkGroups` above — extracted separately
+ * rather than folded into that component because Inicio isn't a market: it
+ * has no `MARKETS`/`MARKET_GROUPS` entry, no dynamic slug-to-market lookup,
+ * and always renders exactly once, not per-group). Rendered between the
+ * branding block and `<MarketLinkGroups>` in both the desktop `<nav>` and the
+ * mobile drawer (specs/market-navigation/spec.md "Inicio link renders between
+ * branding and market groups").
+ */
+function InicioLink({ activeSlug, onLinkClick }: { activeSlug: string; onLinkClick?: () => void }) {
+  const active = activeSlug === 'inicio';
+  return (
+    <Link
+      href="/dashboard/inicio"
+      data-testid="sidebar-link-inicio"
+      aria-current={active ? 'page' : undefined}
+      onClick={onLinkClick}
+      className={
+        'flex items-center gap-3 rounded-md border-r-2 px-3 py-2 text-sm transition-colors motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-zinc-100 ' +
+        (active
+          ? 'border-buy bg-buy/10 font-semibold text-buy'
+          : 'border-transparent text-zinc-400 hover:bg-zinc-900')
+      }
+    >
+      <Icons.Home className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span>Inicio</span>
+    </Link>
+  );
+}
+
+/**
  * `market-nav-redesign` design.md "Component Contracts" / "Decision: Sidebar
  * is a single client component" — entirely `'use client'` because App Router
  * Server Components have no pathname without a middleware shim, and
@@ -74,10 +106,15 @@ function MarketLinkGroups({ activeSlug, onLinkClick }: { activeSlug: string; onL
  * Wired into `app/dashboard/layout.tsx` (the real, non-parenthesized route
  * segment — see that file's header comment and PR1's apply-progress for why
  * `app/(dashboard)/layout.tsx` is NOT the wiring target).
+ *
+ * `inicio-home-section` design.md — `activeSlug` fallback changed from
+ * `'crypto'` to `'inicio'`: Inicio is now the platform's default landing
+ * page, so the fallback used before `pathname` resolves on first render
+ * should match the new default, not the old one.
  */
 export function Sidebar() {
   const pathname = usePathname();
-  const activeSlug = pathname?.split('/')[2] ?? 'crypto';
+  const activeSlug = pathname?.split('/')[2] ?? 'inicio';
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -91,6 +128,7 @@ export function Sidebar() {
           <h1 className="text-lg font-bold tracking-tight text-zinc-50">Plataforma FAF</h1>
           <p className="mt-1 text-xs text-muted">Recomendaciones financieras explicables en tiempo real</p>
         </div>
+        <InicioLink activeSlug={activeSlug} />
         <MarketLinkGroups activeSlug={activeSlug} />
       </nav>
 
@@ -132,6 +170,7 @@ export function Sidebar() {
                 <Icons.Close className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
+            <InicioLink activeSlug={activeSlug} onLinkClick={() => setMobileOpen(false)} />
             <MarketLinkGroups activeSlug={activeSlug} onLinkClick={() => setMobileOpen(false)} />
           </nav>
         </div>

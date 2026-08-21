@@ -6,10 +6,13 @@ import { DashboardHeader } from '@/app/(dashboard)/components/DashboardHeader';
 /**
  * `market-nav-redesign` design.md "One dynamic segment `[market]/page.tsx`
  * for all placeholder markets" (Phase 3/PR3, task 3.3). Sibling of
- * `app/dashboard/crypto/` under the real (non-parenthesized) `app/dashboard/`
- * segment — see the routing-correction note in `app/dashboard/crypto/page.tsx`
- * and PR1's apply-progress for why `app/(dashboard)/[market]/page.tsx` (the
- * route group) would NOT resolve to `/dashboard/{market}` URLs.
+ * `app/dashboard/(with-footer)/crypto/` under the real (non-parenthesized)
+ * `app/dashboard/` segment — see the routing-correction note in
+ * `app/dashboard/(with-footer)/crypto/page.tsx` and PR1's apply-progress for
+ * why `app/(dashboard)/[market]/page.tsx` (the route group) would NOT
+ * resolve to `/dashboard/{market}` URLs. Moved into the `(with-footer)`
+ * route group by `inicio-home-section` design.md (footer exclusion
+ * mechanism) — URL-neutral, this file still resolves to `/dashboard/{market}`.
  *
  * Next.js resolves the static `crypto/` segment before this sibling dynamic
  * `[market]` segment for an exact `/dashboard/crypto` match (standard App

@@ -175,12 +175,62 @@ test.describe('Sidebar — group order', () => {
       await expect(nav.getByTestId(`sidebar-link-${slug}`)).toBeVisible();
     }
 
-    // Order within each group must match the spec exactly, not just membership.
-    const allSlugs = [...MERCADOS_PRINCIPALES, ...MERCADO_ARGENTINO];
+    // Order within each group must match the spec exactly, not just
+    // membership. `inicio-home-section` prepends the Inicio link, above and
+    // outside both market groups, to the expected order
+    // (specs/market-navigation/spec.md "Inicio link renders between branding
+    // and market groups").
+    const allSlugs = ['inicio', ...MERCADOS_PRINCIPALES, ...MERCADO_ARGENTINO];
     const testIds = await nav.locator('[data-testid^="sidebar-link-"]').evaluateAll((els) =>
       els.map((el) => el.getAttribute('data-testid')),
     );
     expect(testIds).toEqual(allSlugs.map((slug) => `sidebar-link-${slug}`));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// `inicio-home-section` — Inicio sidebar link active-state and footer
+// exclusion. specs/market-navigation/spec.md "Inicio link renders between
+// branding and market groups" (aria-current) + "Inicio route renders no
+// footer".
+// ---------------------------------------------------------------------------
+
+test.describe('Sidebar — Inicio link', () => {
+  test('Inicio link has aria-current="page" on /dashboard/inicio; no market link does', async ({ page }) => {
+    await page.goto('/dashboard/inicio');
+
+    const nav = page.getByRole('navigation', { name: 'Mercados' });
+    await expect(nav.getByTestId('sidebar-link-inicio')).toHaveAttribute('aria-current', 'page');
+
+    for (const slug of [...MERCADOS_PRINCIPALES, ...MERCADO_ARGENTINO]) {
+      await expect(nav.getByTestId(`sidebar-link-${slug}`)).not.toHaveAttribute('aria-current', 'page');
+    }
+  });
+
+  test('Criptomonedas link stays active on /dashboard/crypto; Inicio link is not active there', async ({
+    page,
+  }) => {
+    await gotoCrypto(page);
+
+    const nav = page.getByRole('navigation', { name: 'Mercados' });
+    await expect(nav.getByTestId('sidebar-link-crypto')).toHaveAttribute('aria-current', 'page');
+    await expect(nav.getByTestId('sidebar-link-inicio')).not.toHaveAttribute('aria-current', 'page');
+  });
+});
+
+test.describe('Inicio route — no dashboard footer', () => {
+  test('renders no dashboard-footer element anywhere in the DOM', async ({ page }) => {
+    const response = await page.goto('/dashboard/inicio');
+
+    // Guard against a vacuous pass: a nonexistent route (404) would also
+    // have zero `dashboard-footer` elements, so this must first prove the
+    // route actually rendered real Inicio content before asserting the
+    // footer's absence (see strict-tdd's "GREEN that passes trivially"
+    // warning).
+    expect(response?.status()).toBeLessThan(400);
+    await expect(page.getByRole('heading', { name: /Bienvenido/ })).toBeVisible();
+
+    await expect(page.getByTestId('dashboard-footer')).toHaveCount(0);
   });
 });
 
@@ -355,7 +405,12 @@ test.describe('Mobile navigation drawer', () => {
       await expect(drawer.getByText('MERCADOS PRINCIPALES')).toBeVisible();
       await expect(drawer.getByText('MERCADO ARGENTINO')).toBeVisible();
 
-      const allSlugs = [...MERCADOS_PRINCIPALES, ...MERCADO_ARGENTINO];
+      // `inicio-home-section` — the Inicio link renders in the mobile drawer
+      // too (specs/market-navigation/spec.md "Inicio link renders between
+      // branding and market groups": "the desktop sidebar or the mobile
+      // drawer"), so it's prepended here exactly as in the desktop "Sidebar —
+      // group order" test above.
+      const allSlugs = ['inicio', ...MERCADOS_PRINCIPALES, ...MERCADO_ARGENTINO];
       const testIds = await drawer.locator('[data-testid^="sidebar-link-"]').evaluateAll((els) =>
         els.map((el) => el.getAttribute('data-testid')),
       );

@@ -305,22 +305,41 @@ test.describe('Tier 1 — card grid', () => {
 });
 
 // ---------------------------------------------------------------------------
-// `market-nav-redesign` Phase 1 (PR1), task 1.6 — bare `/dashboard` MUST NOT
-// 404 and MUST land the user on the working crypto view (design.md "Bare
-// `/dashboard` resolves via `redirect()`"; specs/market-navigation/spec.md
-// "Bare /dashboard never 404s"; specs/decision-dashboard/spec.md "Bare
-// /dashboard redirects to the canonical route").
+// `inicio-home-section` Phase 1 (task 1.1/1.2) — bare `/dashboard` and root
+// `/` MUST NOT 404 and MUST land on the new Inicio landing route, not
+// directly on the crypto view (design.md "Data Flow";
+// specs/market-navigation/spec.md "Bare /dashboard never 404s" + "Root path
+// lands on Inicio, never a 404"; specs/decision-dashboard/spec.md "Bare
+// /dashboard lands on Inicio, not the overview directly"). The former
+// crypto-card assertions move to a direct `/dashboard/crypto` visit below,
+// since that behavior is unrelated to the redirect target itself.
 // ---------------------------------------------------------------------------
 
 test.describe('Bare /dashboard redirect', () => {
-  test('navigating to bare /dashboard lands on the crypto view, never a 404', async ({ page }) => {
-    await stubDecisions(page, MULTI_ASSET_REPORT);
-    await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
-
+  test('navigating to bare /dashboard lands on Inicio, never a 404', async ({ page }) => {
     const response = await page.goto('/dashboard');
     expect(response?.status()).toBeLessThan(400);
 
-    await expect(page).toHaveURL(/\/dashboard\/crypto$/);
+    await expect(page).toHaveURL(/\/dashboard\/inicio$/);
+  });
+});
+
+test.describe('Root / redirect', () => {
+  test('navigating to root / lands on Inicio, never a 404', async ({ page }) => {
+    const response = await page.goto('/');
+    expect(response?.status()).toBeLessThan(400);
+
+    await expect(page).toHaveURL(/\/dashboard\/inicio$/);
+  });
+});
+
+test.describe('Direct /dashboard/crypto visit', () => {
+  test('renders the crypto view directly, with the actionable BUY card visible', async ({ page }) => {
+    await stubDecisions(page, MULTI_ASSET_REPORT);
+    await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
+
+    await page.goto('/dashboard/crypto');
+
     await expect(page.getByTestId('decision-card-BTCUSDT')).toBeVisible();
     await expect(page.getByTestId('decision-card-BTCUSDT')).toContainText('BUY');
   });

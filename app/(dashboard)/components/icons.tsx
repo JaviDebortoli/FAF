@@ -144,6 +144,21 @@ export function Close(props: IconProps) {
   );
 }
 
+/**
+ * `inicio-home-section` design.md "Interfaces / Contracts" — hand-drawn Home
+ * icon for the new `InicioLink` sidebar entry (`Sidebar.tsx`), following this
+ * file's existing convention (no package/CDN dependency).
+ */
+export function Home(props: IconProps) {
+  return (
+    <svg {...DEFAULTS} {...props}>
+      <path d="M4 11.5 12 4l8 7.5" />
+      <path d="M6 10v10h12V10" />
+      <path d="M10 20v-6h4v6" />
+    </svg>
+  );
+}
+
 export const Icons = {
   TrendingUp,
   Coins,
@@ -157,4 +172,5 @@ export const Icons = {
   Lock,
   Menu,
   Close,
+  Home,
 };

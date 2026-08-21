@@ -47,7 +47,12 @@ vi.mock('@/app/(dashboard)/lib/markets', () => ({
 
 describe('CryptoDashboardPage — heading is data-driven from MARKETS.crypto.label', () => {
   it('renders the mocked MARKETS.crypto.label in the output HTML, not a hardcoded string', async () => {
-    const { default: CryptoDashboardPage } = await import('@/app/dashboard/crypto/page');
+    // `inicio-home-section` design.md "Import-path note" — `crypto/page.tsx`
+    // moved under the `(with-footer)` route group (footer-exclusion split for
+    // the new Inicio route). Route groups affect only the URL, not the
+    // on-disk path this `@/` alias resolves, so the import must follow the
+    // physical move.
+    const { default: CryptoDashboardPage } = await import('@/app/dashboard/(with-footer)/crypto/page');
 
     const html = renderToString(CryptoDashboardPage());
 

@@ -14,7 +14,12 @@ import { redirect } from 'next/navigation';
  * working — the actual `/dashboard` and `/dashboard/crypto` URLs the spec
  * requires are served by the real (non-parenthesized) `app/dashboard/` segment
  * added alongside this route group.
+ *
+ * `inicio-home-section` design.md — retargeted from `/dashboard/crypto` to
+ * `/dashboard/inicio`: root `/` now lands on the new Inicio landing page too
+ * (specs/market-navigation/spec.md "Per-market routing" — "The root path `/`
+ * MUST also NOT 404 and MUST land the user on the same Inicio route").
  */
 export default function DashboardIndexPage() {
-  redirect('/dashboard/crypto');
+  redirect('/dashboard/inicio');
 }

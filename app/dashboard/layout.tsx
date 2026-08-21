@@ -14,26 +14,21 @@ import { Sidebar } from '@/app/(dashboard)/components/Sidebar';
  * `app/(dashboard)/layout.tsx` only wraps the root `/` redirect shim and is
  * NOT where `<Sidebar/>` belongs, since it contributes no `/dashboard/*` URL
  * segment.
+ *
+ * `inicio-home-section` design.md "Footer exclusion mechanism" — the shared
+ * `<footer>` and its `pb-48` spacing were moved out of this layout into
+ * `app/dashboard/(with-footer)/layout.tsx`, a nested route group wrapping
+ * `crypto/` and `[market]/` only. This file now stays a plain Server
+ * Component shell (`<Sidebar/>` + a content wrapper) shared by every
+ * `/dashboard/*` route including the new Inicio route, which intentionally
+ * sits outside `(with-footer)/` and therefore never renders the footer
+ * (specs/market-navigation/spec.md "Shared shell footer" — Inicio exception).
  */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <div className="flex-1 pb-48 md:pl-64">{children}</div>
-      <footer
-        data-testid="dashboard-footer"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-zinc-800 bg-zinc-950 py-4 md:left-64"
-      >
-        <div className="mx-auto max-w-6xl px-6 text-center font-mono text-xs leading-relaxed text-muted">
-          <p>
-            Las recomendaciones emitidas por este sistema son de carácter informativo y educativo. Los resultados
-            se basan en el Marco Argumentativo Financiero (FAF) y no constituyen asesoría financiera personalizada.
-          </p>
-          <p className="mt-2 font-bold text-zinc-50">
-            FAF - Marco Argumentativo Financiero - Desarrollado por Javier M. Debórtoli.
-          </p>
-        </div>
-      </footer>
+      <div className="flex-1 md:pl-64">{children}</div>
     </div>
   );
 }

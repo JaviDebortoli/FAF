@@ -7,9 +7,13 @@ import { MARKETS } from '@/app/(dashboard)/lib/markets';
  * (Phase 1, task 1.3). `OverviewClient` and everything it mounts (`DirectionFilter`,
  * `DecisionCard`, `ScoreGauge`, `DrilldownPanel`, etc.) is byte-for-byte unchanged;
  * only the host route moved to `/dashboard/crypto` — the canonical route for the
- * one market with real backend data. Bare `/dashboard` redirects here (see
- * `app/dashboard/page.tsx`); the pre-existing root `/` also redirects here (see
- * `app/(dashboard)/page.tsx`) so neither bookmark 404s.
+ * one market with real backend data.
+ *
+ * `inicio-home-section` design.md: bare `/dashboard` and root `/` no longer
+ * redirect straight here — both now land on `/dashboard/inicio` (see
+ * `app/dashboard/page.tsx`, `app/(dashboard)/page.tsx`), which links to this
+ * page via its CTA. This route also moved into the `(with-footer)` route
+ * group (URL-neutral) so the shared footer renders here but not on Inicio.
  *
  * Routing note (deviation from `design.md`'s literal file paths — see apply-progress
  * "Deviations from Design"): `app/(dashboard)` is a Next.js *route group*
