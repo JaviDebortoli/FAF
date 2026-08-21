@@ -16,7 +16,7 @@ export function ThesisScores({ decision }: ThesisScoresProps) {
   const winningThesis: Thesis = decision.recommendation === 'BUY' ? 'bullish' : 'bearish';
 
   return (
-    <dl className="grid grid-cols-2 gap-3" data-testid="thesis-scores">
+    <dl className="grid shrink-0 grid-cols-2 gap-3" data-testid="thesis-scores">
       <ThesisColumn
         label="Alcista"
         aggregated={decision.bullish.aggregated}

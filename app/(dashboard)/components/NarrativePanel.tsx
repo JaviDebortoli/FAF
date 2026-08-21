@@ -114,7 +114,7 @@ export function NarrativePanel({ asset }: NarrativePanelProps) {
       aria-label="Narrativa generada por IA"
       data-testid="narrative-panel"
       data-state={state}
-      className="flex flex-col gap-2 rounded-md border border-zinc-800 bg-zinc-950 p-3"
+      className="flex shrink-0 flex-col gap-2 rounded-md border border-zinc-800 bg-zinc-950 p-3"
     >
       {/* design-narrative spec "Visible AI-generated disclaimer": directly
           attached header, never a distant footnote — present for every

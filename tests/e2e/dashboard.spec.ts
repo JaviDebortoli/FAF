@@ -231,6 +231,53 @@ async function stubNarrativeError(page: import('@playwright/test').Page, status:
   });
 }
 
+/**
+ * `drilldown-graph-layout-fix` task 1.1 — streaming stub that actually
+ * delivers the narrative body PROGRESSIVELY, unlike `stubNarrativeSuccess`
+ * (which `route.fulfill`s the whole body atomically and can never exercise
+ * the mid-stream growing-height scenario). `page.route`/`route.fulfill` has
+ * no API for a chunked/incremental response body, so this overrides
+ * `window.fetch` for the narrative endpoint via `page.addInitScript`
+ * (runs before any page script, so `NarrativePanel.tsx`'s own `fetch` call
+ * picks it up) and returns a real `Response` backed by a `ReadableStream`
+ * that enqueues each chunk after a short delay — `NarrativePanel.tsx` reads
+ * `response.body?.getReader()` exactly the same way against this as it does
+ * against a real network stream. Every other request keeps using the real
+ * `fetch` so `stubDecisions`'s `page.route` on `**\/api/decisions` is
+ * unaffected.
+ */
+async function stubNarrativeStreaming(page: import('@playwright/test').Page, chunks: string[]) {
+  await page.addInitScript((chunksArg: string[]) => {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
+      if (!/\/api\/decisions\/[^/]+\/narrative(\?.*)?$/.test(url)) {
+        return originalFetch(input, init);
+      }
+
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          for (const chunk of chunksArg) {
+            await new Promise((resolve) => setTimeout(resolve, 40));
+            controller.enqueue(encoder.encode(chunk));
+          }
+          controller.close();
+        },
+      });
+
+      return new Response(stream, {
+        status: 200,
+        headers: {
+          'content-type': 'text/plain; charset=utf-8',
+          'x-faf-narrative-source': 'llm',
+        },
+      });
+    };
+  }, chunks);
+}
+
 const RULE_IDS = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8'] as const;
 
 // ---------------------------------------------------------------------------
@@ -415,6 +462,85 @@ test.describe('Tier 2 — drill-down graph', () => {
     }
 
     await expect(panel.getByTestId('thesis-scores')).toBeVisible();
+  });
+
+  // -------------------------------------------------------------------------
+  // `drilldown-graph-layout-fix` task 1.2 — the graph must stay visible and
+  // non-zero-height WHILE the narrative streams in and grows past the
+  // dialog's `max-h-[90vh]`, not just at the start/end. Root cause
+  // (exploration.md): the SVG's implicit `overflow:hidden` gives it an
+  // automatic flex-item min-height of 0, so as `NarrativePanel` grows it
+  // eats all the negative free space and squeezes the graph toward 0px.
+  // -------------------------------------------------------------------------
+  test('graph stays visible with non-zero height while the narrative streams and grows', async ({ page }) => {
+    await stubDecisions(page, MULTI_ASSET_REPORT);
+
+    // Long enough, and delivered in enough small chunks over enough real
+    // time, that accumulated narrative height clears the dialog's remaining
+    // budget under `max-h-[90vh]` well before the stream finishes — this is
+    // what forces the flex shrink competition described in exploration.md
+    // to actually occur mid-stream, not just as a final-state artifact.
+    const paragraph =
+      'Parrafo de narrativa extendida generado para forzar el crecimiento del panel de detalle mas alla de su altura maxima visible mientras el grafo de argumentacion permanece renderizado. ';
+    const chunks = Array.from({ length: 30 }, (_, i) => `${paragraph}(${i + 1}) `);
+
+    await stubNarrativeStreaming(page, chunks);
+
+    await page.goto('/dashboard/crypto');
+    await page.getByTestId('decision-card-BTCUSDT').click();
+
+    const panel = page.getByTestId('drilldown-panel-BTCUSDT');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId('graph-node-R1')).toBeVisible();
+
+    const narrative = page.getByTestId('narrative-panel');
+
+    // Poll repeatedly across a window that safely covers the entire stream
+    // (30 chunks * 50ms delay each => ~1.5s) plus margin, and assert every
+    // leaf node keeps a real, non-zero rendered bounding-box height at each
+    // point — not only before the stream starts or after it settles. A test
+    // that only checked the final `done` state would pass even against the
+    // unfixed code in the fortunate case where the crossing happens to
+    // settle back to a legible size once streaming stops; polling
+    // throughout the live stream is what actually catches the mid-stream
+    // compression exploration.md describes.
+    let sawMidStreamState = false;
+    let observedNonTrivialHeight = false;
+    for (let poll = 0; poll < 20; poll += 1) {
+      await page.waitForTimeout(150);
+
+      const state = await narrative.getAttribute('data-state');
+      if (state === 'streaming' || state === 'loading') sawMidStreamState = true;
+
+      for (const ruleId of RULE_IDS) {
+        const node = panel.getByTestId(`graph-node-${ruleId}`);
+        await expect(
+          node,
+          `graph-node-${ruleId} must stay visible during streaming (poll ${poll}, narrative state ${state})`,
+        ).toBeVisible();
+        const box = await node.boundingBox();
+        expect(
+          box,
+          `graph-node-${ruleId} must have a bounding box during streaming (poll ${poll}, narrative state ${state})`,
+        ).not.toBeNull();
+        // A fully rendered leaf node's circle (r=9) is ~18px tall at full
+        // scale; 4px is generous headroom above "collapsed to a sliver"
+        // while still catching real compression toward 0.
+        expect(
+          box!.height,
+          `graph-node-${ruleId} height collapsed to ${box!.height}px during streaming (poll ${poll}, narrative state ${state}) — the graph is being squeezed as the narrative grows`,
+        ).toBeGreaterThan(4);
+        if (box!.height > 10) observedNonTrivialHeight = true;
+      }
+    }
+
+    // Sanity checks on the test itself, guarding against a vacuous pass:
+    // (a) at least one poll must have landed while the narrative was still
+    // actively streaming (not only after it settled into its final size),
+    // and (b) the graph must have been observed at a real, non-degenerate
+    // size at least once.
+    expect(sawMidStreamState).toBe(true);
+    expect(observedNonTrivialHeight).toBe(true);
   });
 });
 

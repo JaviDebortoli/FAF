@@ -37,7 +37,7 @@ export function ArgumentGraph({ decision }: ArgumentGraphProps) {
       preserveAspectRatio="xMidYMid meet"
       aria-labelledby={titleId}
       aria-describedby={descId}
-      className="h-auto w-full text-zinc-700"
+      className="h-auto w-full shrink-0 text-zinc-700"
     >
       <title id={titleId}>{`Grafo de argumentacion para ${decision.asset}`}</title>
       <desc id={descId}>
