@@ -56,4 +56,4 @@ Chain strategy: pending
 
 ## Phase 4: Deferred
 
-- [ ] 4.1 Do NOT merge `openspec/specs/market-navigation/spec.md` / `decision-dashboard/spec.md` deltas during apply — defer to `sdd-archive` per repo convention.
+- [x] 4.1 Do NOT merge `openspec/specs/market-navigation/spec.md` / `decision-dashboard/spec.md` deltas during apply — defer to `sdd-archive` per repo convention. Completed by `sdd-archive`: 4 MODIFIED requirements (3 in `market-navigation`, 1 in `decision-dashboard`) merged into the live main specs with `(Previously: ...)` trailing lines. See `archive-report.md`.
