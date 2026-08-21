@@ -54,4 +54,4 @@ Work unit: all 3 points, Point 3 as one atomic commit. Focused test: `npx playwr
 
 ## Phase 7: Deferred
 
-- [ ] 7.1 Merge `market-navigation/spec.md`'s MODIFIED "Shared shell footer" delta — deferred to `sdd-archive`, per repo convention.
+- [x] 7.1 Merge `market-navigation/spec.md`'s MODIFIED "Shared shell footer" delta — deferred to `sdd-archive`, per repo convention. Completed during `sdd-archive`: delta applied verbatim to `openspec/specs/market-navigation/spec.md`.
