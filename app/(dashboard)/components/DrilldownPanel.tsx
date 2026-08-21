@@ -50,7 +50,7 @@ export function DrilldownPanel({ decision, onClose }: DrilldownPanelProps) {
         data-testid={`drilldown-panel-${decision.asset}`}
         tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col gap-4 overflow-y-auto rounded-md border border-zinc-800 bg-zinc-950 p-5"
+        className="flex max-h-[90vh] w-full max-w-4xl flex-col gap-4 overflow-y-auto rounded-md border border-zinc-800 bg-zinc-950 p-5"
       >
         <div className="flex items-center justify-between">
           <h2 id="drilldown-title" className="font-mono text-base font-semibold tracking-tight text-zinc-100">

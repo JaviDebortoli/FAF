@@ -24,17 +24,24 @@ export default function InicioPage() {
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-2 border-b border-zinc-800 pb-6">
         <span className="font-mono text-xs uppercase tracking-[0.3em] text-muted">Plataforma FAF</span>
-        <h1 className="text-2xl font-semibold text-zinc-50">Bienvenido a la Plataforma FAF</h1>
+        <h1 className="text-2xl font-semibold text-zinc-50">Bienvenido</h1>
       </header>
-      <div className="flex max-w-2xl flex-col gap-4 text-sm text-zinc-400">
+      <div className="flex flex-col gap-4 rounded-md border border-zinc-800 bg-zinc-950 p-5 text-sm text-zinc-400">
         <p>
-          FAF (Marco Argumentativo Financiero) es un framework de decisión determinístico: cada recomendación
-          BUY/SELL se deriva combinando evidencia técnica (γ, ρ) sobre un umbral fijo θ = 0.67, sin texto
-          generado por IA en el cálculo central de la decisión.
+          FAF es una plataforma de recomendaciones de trading que no usa un modelo de lenguaje para decidir
+          qué comprar o vender. Cada recomendación BUY/SELL surge de un pipeline determinístico de 4 capas
+          (ingesta de datos de mercado → indicadores técnicos → reglas argumentativas → agregación de
+          puntajes) que combina evidencia técnica (RSI, MACD, SMA, Bandas de Bollinger) sobre un umbral fijo
+          θ = 0.67. El mismo dato de entrada siempre produce la misma recomendación.
         </p>
         <p>
-          Actualmente el único mercado con datos reales en producción es Criptomonedas — el resto de los
-          mercados listados en el menú lateral son vistas "próximamente".
+          Este comportamiento se apoya en el <strong className="text-zinc-300">Marco Argumentativo Financiero
+          (FAF)</strong>: cada regla técnica activada aporta un argumento a favor de la tesis alcista o
+          bajista, con una etiqueta &lt;γ, ρ&gt; que mide certeza y refutación. Los argumentos de cada tesis
+          se agregan en un puntaje σ (sigma); la tesis con mayor σ por encima del umbral θ gana, y la
+          diferencia entre ambos puntajes (gap = |σ⁺ − σ⁻|) indica qué tan clara es la señal. El texto
+          narrativo que acompaña cada recomendación sí puede ser generado por IA, pero se muestra siempre
+          con su propio aviso — la decisión BUY/SELL nunca lo es.
         </p>
       </div>
       <Link

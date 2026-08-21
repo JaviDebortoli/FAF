@@ -21,10 +21,20 @@ export function DashboardHeader({ title, showDisclaimer = false }: DashboardHead
       <span className="font-mono text-xs uppercase tracking-[0.3em] text-muted">Panel de decisiones</span>
       <h1 className="text-2xl font-semibold text-zinc-50">{title}</h1>
       {showDisclaimer && (
-        <p className="max-w-2xl text-sm text-zinc-400">
-          Cada tarjeta muestra una recomendación BUY/SELL derivada de forma determinística por el
-          framework argumentativo. Esta vista no contiene texto generado por IA.
-        </p>
+        <>
+          <p className="text-sm text-zinc-400">
+            Cada tarjeta muestra una recomendación BUY/SELL derivada de forma determinística por el
+            framework argumentativo. Esta vista no contiene texto generado por IA.
+          </p>
+          <p className="text-sm text-zinc-400">
+            El indicador semicircular de cada tarjeta muestra dos agujas: la verde (σ⁺) mide la evidencia a
+            favor de comprar y la roja (σ⁻) la evidencia a favor de vender, ambas entre 0 y 1. La marca
+            ámbar indica el umbral de decisión θ = 0.67, el puntaje mínimo que una tesis debe alcanzar. La
+            recomendación solo se emite si la aguja dominante supera θ y además la distancia con la otra
+            aguja — el "gap" (|σ⁺ − σ⁻|) que se muestra debajo del indicador — alcanza al menos δ = 0.20; si
+            no, la plataforma no recomienda.
+          </p>
+        </>
       )}
     </header>
   );
