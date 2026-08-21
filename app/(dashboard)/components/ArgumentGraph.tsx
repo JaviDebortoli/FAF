@@ -55,9 +55,9 @@ export function ArgumentGraph({ decision }: ArgumentGraphProps) {
             y1={from.y}
             x2={to.x}
             y2={to.y}
-            stroke="currentColor"
+            className="stroke-zinc-200"
             strokeWidth={1}
-            opacity={0.35}
+            opacity={0.5}
           />
         );
       })}

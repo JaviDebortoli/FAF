@@ -31,3 +31,33 @@ body {
   background-color: #09090b;
   color: #f4f4f5;
 }
+
+/*
+ * Global scrollbar theming (graph-scrollbar-theming): standard
+ * `scrollbar-color`/`scrollbar-width` as the primary mechanism (Chrome 121+,
+ * Firefox, Safari 26.2+), with `::-webkit-scrollbar*` pseudo-elements as a
+ * fallback/refinement for older Chromium/WebKit. Thumb/track tones match the
+ * existing `zinc-700`/`zinc-900`/`border-zinc-800` dashboard chrome. Scoped
+ * to `html` so it covers every `overflow-y-auto` container app-wide
+ * (DrilldownPanel, desktop Sidebar nav, mobile Sidebar drawer) with zero
+ * per-component edits.
+ */
+html {
+  scrollbar-color: #3f3f46 #18181b;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: #18181b;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #3f3f46;
+  border-radius: 9999px;
+  border: 2px solid #18181b;
+}
