@@ -113,6 +113,38 @@ test.describe('Shared dashboard footer', () => {
       expect(overlaps).toBe(false);
     });
   }
+
+  // `inicio-visual-and-scroll-fix` — root cause: `<main>`'s `min-h-screen`
+  // double-stacks with `(with-footer)/layout.tsx`'s `pb-48` (12rem = 192px),
+  // always rendering >= `100vh + 192px` regardless of content, which shows a
+  // phantom vertical scrollbar even on short-content routes. `gotoCrypto`'s
+  // `EMPTY_REPORT` triggers `EmptyState` (a short, dashed-border block), the
+  // shortest realistic content on `/dashboard/crypto`.
+  //
+  // Explicit 1280x800 viewport (same as the "footer never overlaps content"
+  // 1280px case above), not Playwright's default 1280x720 project viewport:
+  // diagnosed directly against the fixed code, the real (non-phantom) content
+  // height of header + EmptyState on this route is ~549.5px, which alone
+  // already exceeds a 720px-tall viewport once the 192px reserved footer
+  // space is added (549.5 + 192 = 741.5 > 720) — genuine content overflow,
+  // not the double-counted `min-h-screen` artifact this test guards against
+  // (which forced exactly 912px regardless of content, a fixed +192px over
+  // ANY viewport height). 800px is representative of a real desktop and
+  // matches this suite's existing viewport convention.
+  test('no phantom vertical scroll on a short-content route (EmptyState)', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await gotoCrypto(page);
+    await expect(page.getByTestId('empty-state')).toBeVisible();
+
+    const { scrollHeight, innerHeight } = await page.evaluate(() => ({
+      scrollHeight: document.documentElement.scrollHeight,
+      innerHeight: window.innerHeight,
+    }));
+
+    // 1px tolerance for scrollbar-width/subpixel rounding quirks across
+    // browsers, not a meaningful slack on the ~192px bug this guards against.
+    expect(scrollHeight).toBeLessThanOrEqual(innerHeight + 1);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -31,7 +31,14 @@ export default async function MarketPlaceholderPage({ params }: { params: Promis
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 py-10">
+    // `inicio-visual-and-scroll-fix` — `min-h-[calc(100vh-12rem)]`, not
+    // `min-h-screen`: this `<main>` is wrapped by `(with-footer)/layout.tsx`'s
+    // `pb-48` (12rem = 192px), so `min-h-screen` here double-counts that
+    // spacing, always rendering >= `100vh + 192px` and showing a phantom
+    // vertical scrollbar even on short-content routes (`MarketPlaceholder`).
+    // The `12rem` literal is coupled to that `pb-48` value — see the comment
+    // there and on `crypto/page.tsx`'s identical `<main>`.
+    <main className="mx-auto flex min-h-[calc(100vh-12rem)] max-w-6xl flex-col gap-8 px-6 py-10">
       <DashboardHeader title={market.label} showDisclaimer />
 
       <MarketPlaceholder marketLabel={market.label} />

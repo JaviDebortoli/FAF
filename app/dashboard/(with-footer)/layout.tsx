@@ -15,6 +15,14 @@
 export default function WithFooterLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      {/* `inicio-visual-and-scroll-fix` — this `pb-48` (12rem = 192px) is
+          coupled to the `min-h-[calc(100vh-12rem)]` classNames on
+          `crypto/page.tsx`'s and `[market]/page.tsx`'s `<main>` elements: both
+          reuse this exact `12rem` literal so their content floor stays in
+          sync with the space reserved here for the fixed footer below. No
+          compile-time enforcement of this coupling — if `pb-48` ever changes,
+          update both `<main>` classNames to match (same convention as
+          `BETA_MS`'s cross-file coupling comment, `cycle-cache-ttl-6h`). */}
       <div className="pb-48">{children}</div>
       <footer
         data-testid="dashboard-footer"

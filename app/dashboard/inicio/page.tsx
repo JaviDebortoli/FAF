@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { PipelineDiagram } from '@/app/(dashboard)/components/PipelineDiagram';
 
 /**
  * `inicio-home-section` design.md — new default landing page for the FAF
@@ -44,6 +45,7 @@ export default function InicioPage() {
           con su propio aviso — la decisión BUY/SELL nunca lo es.
         </p>
       </div>
+      <PipelineDiagram />
       <Link
         href="/dashboard/crypto"
         className="w-fit rounded-md border border-buy bg-buy/10 px-4 py-2 text-sm font-semibold text-buy transition-colors hover:bg-buy/20"
