@@ -24,7 +24,15 @@ export function ScoreGauge({ sigmaPlus, sigmaMinus, theta }: ScoreGaugeProps) {
       viewBox={GAUGE_VIEWBOX}
       className="h-20 w-full text-zinc-800"
     >
-      <path d={arcPath} fill="none" stroke="currentColor" strokeWidth={10} strokeLinecap="round" />
+      <path
+        d={arcPath}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={10}
+        strokeLinecap="round"
+        className="stroke-zinc-200"
+        opacity={0.5}
+      />
 
       <line
         x1={thetaTick.x1}
