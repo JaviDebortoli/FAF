@@ -2,15 +2,18 @@
  * `inicio-home-section` design.md "Footer exclusion mechanism" — carries the
  * `pb-48` content-spacing wrapper and the shared `<footer>`, moved verbatim
  * (same copy, className, `data-testid="dashboard-footer"`) out of
- * `app/dashboard/layout.tsx`. Wraps `crypto/` and `[market]/` only — Inicio
- * (`app/dashboard/inicio/page.tsx`) stays outside this route group and never
- * renders the footer. Route groups contribute no URL segment, so this split
- * is fully URL-neutral: `/dashboard/crypto` and `/dashboard/{market-slug}`
- * resolve exactly as before.
+ * `app/dashboard/layout.tsx`. Route groups contribute no URL segment, so this
+ * split is fully URL-neutral: `/dashboard/crypto`, `/dashboard/{market-slug}`,
+ * and `/dashboard/inicio` all resolve exactly as before.
  *
  * `pb-48` moves here from the parent layout's content wrapper because its
  * only purpose — reserving space above the fixed-position footer — is now
  * scoped to routes that actually render that footer.
+ *
+ * `dashboard-cleanup-and-footer-revert` — now also wraps
+ * `inicio/page.tsx`, which moved into this route group so `/dashboard/inicio`
+ * shares the same footer as `crypto/` and `[market]/` (previously it stayed
+ * outside this group and rendered no footer at all).
  */
 export default function WithFooterLayout({ children }: { children: React.ReactNode }) {
   return (

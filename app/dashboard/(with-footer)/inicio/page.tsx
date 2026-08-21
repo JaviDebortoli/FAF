@@ -16,14 +16,21 @@ import { PipelineDiagram } from '@/app/(dashboard)/components/PipelineDiagram';
  * decisiones" eyebrow + market-label `<h1>`); reusing it here would
  * misrepresent Inicio as a market panel (design.md "Architecture Decisions").
  *
- * Lives outside the `app/dashboard/(with-footer)/` route group — the shared
- * `dashboard-footer` MUST NOT render on this route
- * (specs/market-navigation/spec.md "Shared shell footer" — "The Inicio route
- * MUST NOT render the dashboard-footer element at all").
+ * `dashboard-cleanup-and-footer-revert` — moved into the
+ * `app/dashboard/(with-footer)/` route group (URL-neutral) so the shared
+ * `dashboard-footer` renders here identically to `crypto/`/`[market]/`
+ * (specs/market-navigation/spec.md "Shared shell footer", reverting the
+ * `inicio-home-section`-era exclusion). `<main>` uses
+ * `min-h-[calc(100vh-12rem)]`, not `min-h-screen` — matching
+ * `crypto/page.tsx`/`[market]/page.tsx` byte-for-byte — because this route is
+ * now wrapped by `(with-footer)/layout.tsx`'s `pb-48` (12rem = 192px); using
+ * `min-h-screen` here would double-count that spacing and reintroduce the
+ * phantom-scroll bug `inicio-visual-and-scroll-fix` already fixed on the
+ * other two routes.
  */
 export default function InicioPage() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 py-10">
+    <main className="mx-auto flex min-h-[calc(100vh-12rem)] max-w-6xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-2 border-b border-zinc-800 pb-6">
         <span className="font-mono text-xs uppercase tracking-[0.3em] text-muted">Plataforma FAF</span>
         <h1 className="text-2xl font-semibold text-zinc-50">
@@ -34,7 +41,7 @@ export default function InicioPage() {
         <p>
           FAF es una plataforma de recomendaciones de trading que no usa un modelo de lenguaje para decidir
           qué comprar o vender. Cada recomendación BUY/SELL surge de un pipeline determinístico de 4 capas
-          (ingesta de datos de mercado → indicadores técnicos → reglas argumentativas → agregación de
+          (ingesta de datos de mercado, indicadores técnicos, reglas argumentativas y agregación de
           puntajes) que combina evidencia técnica (RSI, MACD, SMA, Bandas de Bollinger) sobre un umbral fijo
           θ = 0.67. El mismo dato de entrada siempre produce la misma recomendación.
         </p>

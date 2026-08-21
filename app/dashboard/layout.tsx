@@ -17,12 +17,15 @@ import { Sidebar } from '@/app/(dashboard)/components/Sidebar';
  *
  * `inicio-home-section` design.md "Footer exclusion mechanism" — the shared
  * `<footer>` and its `pb-48` spacing were moved out of this layout into
- * `app/dashboard/(with-footer)/layout.tsx`, a nested route group wrapping
- * `crypto/` and `[market]/` only. This file now stays a plain Server
- * Component shell (`<Sidebar/>` + a content wrapper) shared by every
- * `/dashboard/*` route including the new Inicio route, which intentionally
- * sits outside `(with-footer)/` and therefore never renders the footer
- * (specs/market-navigation/spec.md "Shared shell footer" — Inicio exception).
+ * `app/dashboard/(with-footer)/layout.tsx`, a nested route group. This file
+ * stays a plain Server Component shell (`<Sidebar/>` + a content wrapper)
+ * shared by every `/dashboard/*` route.
+ *
+ * `dashboard-cleanup-and-footer-revert` — Inicio (`app/dashboard/(with-footer)/inicio/page.tsx`)
+ * now lives inside `(with-footer)/` alongside `crypto/` and `[market]/`, so
+ * every `/dashboard/*` route renders the shared footer with no exception
+ * (specs/market-navigation/spec.md "Shared shell footer", reverting the
+ * former Inicio exclusion).
  */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -12,7 +12,7 @@ interface ThesisScoresProps {
  * per D7 — imported exclusively by `DrilldownPanel`.
  */
 export function ThesisScores({ decision }: ThesisScoresProps) {
-  const { sigmaPlus, sigmaMinus, theta, gap } = computeScores(decision);
+  const { sigmaPlus, sigmaMinus } = computeScores(decision);
   const winningThesis: Thesis = decision.recommendation === 'BUY' ? 'bullish' : 'bearish';
 
   return (
@@ -22,7 +22,6 @@ export function ThesisScores({ decision }: ThesisScoresProps) {
         aggregated={decision.bullish.aggregated}
         net={decision.bullish.net}
         sigma={sigmaPlus}
-        theta={theta}
         color="var(--color-buy)"
         active={winningThesis === 'bullish'}
       />
@@ -31,14 +30,9 @@ export function ThesisScores({ decision }: ThesisScoresProps) {
         aggregated={decision.bearish.aggregated}
         net={decision.bearish.net}
         sigma={sigmaMinus}
-        theta={theta}
         color="var(--color-sell)"
         active={winningThesis === 'bearish'}
       />
-      <div className="col-span-2 flex items-center justify-between border-t border-zinc-800 pt-2 font-mono text-xs tabular-nums text-zinc-500">
-        <span>gap |{'σ⁺'} {'−'} {'σ⁻'}|</span>
-        <span>{gap.toFixed(3)}</span>
-      </div>
     </dl>
   );
 }
@@ -48,12 +42,11 @@ interface ThesisColumnProps {
   aggregated: Label;
   net: Label;
   sigma: number;
-  theta: number;
   color: string;
   active: boolean;
 }
 
-function ThesisColumn({ label, aggregated, net, sigma, theta, color, active }: ThesisColumnProps) {
+function ThesisColumn({ label, aggregated, net, sigma, color, active }: ThesisColumnProps) {
   return (
     <div
       data-active={active}
@@ -74,10 +67,6 @@ function ThesisColumn({ label, aggregated, net, sigma, theta, color, active }: T
       <dd className="font-mono text-sm font-semibold tabular-nums" style={{ color }}>
         {'σ = '}
         {sigma.toFixed(3)}
-      </dd>
-      <dd className="font-mono text-xs tabular-nums text-muted">
-        {'θ '}
-        {theta.toFixed(2)}
       </dd>
     </div>
   );

@@ -112,6 +112,21 @@ test.describe('Shared dashboard footer', () => {
       });
       expect(overlaps).toBe(false);
     });
+
+    // `dashboard-cleanup-and-footer-revert` — Inicio now shares the same
+    // footer as crypto/placeholder-market routes, so the overlap guard must
+    // cover it too, at the same viewports.
+    test(`footer never overlaps content on /dashboard/inicio at ${viewport.width}px`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/dashboard/inicio');
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      const overlaps = await page.evaluate(() => {
+        const main = document.querySelector('main')!;
+        const footer = document.querySelector('[data-testid="dashboard-footer"]')!;
+        return main.getBoundingClientRect().bottom > footer.getBoundingClientRect().top;
+      });
+      expect(overlaps).toBe(false);
+    });
   }
 
   // `inicio-visual-and-scroll-fix` — root cause: `<main>`'s `min-h-screen`
@@ -143,6 +158,37 @@ test.describe('Shared dashboard footer', () => {
 
     // 1px tolerance for scrollbar-width/subpixel rounding quirks across
     // browsers, not a meaningful slack on the ~192px bug this guards against.
+    expect(scrollHeight).toBeLessThanOrEqual(innerHeight + 1);
+  });
+
+  // `dashboard-cleanup-and-footer-revert` — same phantom-scroll root cause as
+  // the crypto test above, now guarding `/dashboard/inicio` after its move
+  // into `(with-footer)/`: without the `<main>` className fix (`min-h-screen`
+  // -> `min-h-[calc(100vh-12rem)]`), the new `pb-48` wrapper double-stacks
+  // with `min-h-screen` and reintroduces the same >=100vh+192px overflow.
+  //
+  // Deviation from tasks.md's suggested 1280x800 (matching the crypto
+  // EmptyState test above): measured directly against the fixed code,
+  // Inicio's real content (heading + prose card + `PipelineDiagram` SVG) plus
+  // the 192px reserved footer space totals ~894px — genuinely taller than
+  // crypto's `EmptyState`, so an 800px-tall viewport would show real
+  // (non-phantom) scroll even with the fix correctly applied and fail this
+  // test for the wrong reason. 1000px gives headroom above that real content
+  // height while still being far short of the ~1142px+ the reintroduced bug
+  // would force (real content ~894 - 192 reserved + 1000 viewport = 1142),
+  // so this test isolates the double-counting bug specifically, same intent
+  // as the crypto test.
+  test('no phantom vertical scroll on /dashboard/inicio', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    await page.goto('/dashboard/inicio');
+    await expect(page.getByRole('heading', { name: /Bienvenido/ })).toBeVisible();
+
+    const { scrollHeight, innerHeight } = await page.evaluate(() => ({
+      scrollHeight: document.documentElement.scrollHeight,
+      innerHeight: window.innerHeight,
+    }));
+
+    // Same 1px tolerance as the crypto test above.
     expect(scrollHeight).toBeLessThanOrEqual(innerHeight + 1);
   });
 });
@@ -250,19 +296,25 @@ test.describe('Sidebar — Inicio link', () => {
   });
 });
 
-test.describe('Inicio route — no dashboard footer', () => {
-  test('renders no dashboard-footer element anywhere in the DOM', async ({ page }) => {
+test.describe('Inicio route — shared dashboard footer', () => {
+  test('renders the same dashboard-footer element and exact copy as /dashboard/crypto', async ({ page }) => {
+    await gotoCrypto(page);
+    const cryptoFooterText = await page.getByTestId('dashboard-footer').innerText();
+
     const response = await page.goto('/dashboard/inicio');
 
     // Guard against a vacuous pass: a nonexistent route (404) would also
     // have zero `dashboard-footer` elements, so this must first prove the
     // route actually rendered real Inicio content before asserting the
-    // footer's absence (see strict-tdd's "GREEN that passes trivially"
+    // footer's presence (see strict-tdd's "GREEN that passes trivially"
     // warning).
     expect(response?.status()).toBeLessThan(400);
     await expect(page.getByRole('heading', { name: /Bienvenido/ })).toBeVisible();
 
-    await expect(page.getByTestId('dashboard-footer')).toHaveCount(0);
+    const footer = page.getByTestId('dashboard-footer');
+    await expect(footer).toContainText('carácter informativo y educativo');
+    await expect(footer).toContainText('Desarrollado por Javier M. Debórtoli.');
+    await expect.poll(() => footer.innerText()).toBe(cryptoFooterText);
   });
 });
 
