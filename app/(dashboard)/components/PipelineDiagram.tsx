@@ -29,12 +29,15 @@ const NODE_RX = 8;
  * indirection without benefit (see exploration.md "Point 1 — diagram
  * construction", Approach 1).
  *
- * Strictly zinc/monochrome (`stroke-zinc-700` box borders, `fill-zinc-900/50`
- * box fill, `fill-zinc-300` labels, `stroke-zinc-600` connectors) —
- * deliberately avoids `--color-buy`/`--color-sell` since this illustrates a
- * generic deterministic process, not a directional BUY/SELL signal. No unit
- * test by design, mirroring `icons.tsx` (static markup, coverage via e2e
- * visibility assertion only).
+ * `inicio-content-polish` — recolored to `var(--color-buy)` (box fill/stroke,
+ * connectors, arrowheads, labels) via literal SVG props, the same proven
+ * mechanism `ArgumentGraph.tsx` uses for `THESIS_COLOR`. This reuses the
+ * platform's own established "active/current" green — the same treatment
+ * `Sidebar.tsx` applies to its active-link state — so Inicio's hero diagram
+ * reads as distinctly on-brand rather than a generic neutral illustration,
+ * instead of the previous strictly zinc/monochrome palette that deliberately
+ * avoided `--color-buy`/`--color-sell`. No unit test by design, mirroring
+ * `icons.tsx` (static markup, coverage via e2e visibility assertion only).
  */
 export function PipelineDiagram() {
   return (
@@ -70,18 +73,16 @@ export function PipelineDiagram() {
               y1={NODE_Y}
               x2={toX}
               y2={NODE_Y}
-              className="stroke-zinc-600"
+              stroke="var(--color-buy)"
               strokeWidth={1.5}
-              opacity={0.85}
             />
             <polyline
               points={`${toX - 10},${NODE_Y - 8} ${toX},${NODE_Y} ${toX - 10},${NODE_Y + 8}`}
               fill="none"
-              className="stroke-zinc-600"
+              stroke="var(--color-buy)"
               strokeWidth={1.5}
               strokeLinecap="round"
               strokeLinejoin="round"
-              opacity={0.85}
             />
           </g>
         );
@@ -95,10 +96,18 @@ export function PipelineDiagram() {
             width={NODE_WIDTH}
             height={NODE_HEIGHT}
             rx={NODE_RX}
-            className="fill-zinc-900/50 stroke-zinc-700"
+            fill="var(--color-buy)"
+            fillOpacity={0.1}
+            stroke="var(--color-buy)"
             strokeWidth={1.5}
           />
-          <text x={node.x} y={NODE_Y + 4} textAnchor="middle" className="fill-zinc-300 font-mono text-[13px]">
+          <text
+            x={node.x}
+            y={NODE_Y + 4}
+            textAnchor="middle"
+            fill="var(--color-buy)"
+            className="font-mono text-[13px]"
+          >
             {node.label}
           </text>
         </g>

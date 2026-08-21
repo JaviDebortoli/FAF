@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { PipelineDiagram } from '@/app/(dashboard)/components/PipelineDiagram';
 
 /**
@@ -8,7 +7,9 @@ import { PipelineDiagram } from '@/app/(dashboard)/components/PipelineDiagram';
  * `MARKETS`/`MARKET_GROUPS` — it is not a market). Both redirect shims
  * (`app/dashboard/page.tsx`, `app/(dashboard)/page.tsx`) now land here first,
  * so a first-time visitor is oriented ("deterministic, non-AI argumentative
- * framework") before dropping into live market data via the CTA below.
+ * framework") before navigating into live market data via the sidebar
+ * (`inicio-content-polish` — the former on-page CTA to `/dashboard/crypto`
+ * was removed as a duplicate of the sidebar's Criptomonedas link).
  *
  * Uses a page-local heading (eyebrow `<span>` + `<h1>`), not `DashboardHeader`
  * — `DashboardHeader` is purpose-built for market views ("Panel de
@@ -25,9 +26,11 @@ export default function InicioPage() {
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-2 border-b border-zinc-800 pb-6">
         <span className="font-mono text-xs uppercase tracking-[0.3em] text-muted">Plataforma FAF</span>
-        <h1 className="text-2xl font-semibold text-zinc-50">Bienvenido</h1>
+        <h1 className="text-2xl font-semibold text-zinc-50">
+          Bienvenido! Recomendaciones determinísticas y explicables
+        </h1>
       </header>
-      <div className="flex flex-col gap-4 rounded-md border border-zinc-800 bg-zinc-950 p-5 text-sm text-zinc-400">
+      <div className="flex flex-col gap-4 rounded-md border border-zinc-800 bg-zinc-950 p-5 text-base text-zinc-400">
         <p>
           FAF es una plataforma de recomendaciones de trading que no usa un modelo de lenguaje para decidir
           qué comprar o vender. Cada recomendación BUY/SELL surge de un pipeline determinístico de 4 capas
@@ -46,12 +49,6 @@ export default function InicioPage() {
         </p>
       </div>
       <PipelineDiagram />
-      <Link
-        href="/dashboard/crypto"
-        className="w-fit rounded-md border border-buy bg-buy/10 px-4 py-2 text-sm font-semibold text-buy transition-colors hover:bg-buy/20"
-      >
-        Ver panel de Criptomonedas →
-      </Link>
     </main>
   );
 }
