@@ -81,6 +81,7 @@ function makeEvidence(
  */
 const BTC_DECISION: Decision = {
   asset: 'BTCUSDT',
+  market: 'crypto',
   t: T,
   recommendation: 'BUY',
   bullish: {
@@ -113,6 +114,7 @@ const BTC_DECISION: Decision = {
 /** ETHUSDT SELL decision. Fires only R7 (sma_bearish). */
 const ETH_DECISION: Decision = {
   asset: 'ETHUSDT',
+  market: 'crypto',
   t: T,
   recommendation: 'SELL',
   bullish: {
@@ -146,6 +148,7 @@ const ETH_DECISION: Decision = {
  */
 const SOL_NO_RECOMMENDATION: Decision = {
   asset: 'SOLUSDT',
+  market: 'crypto',
   t: T,
   recommendation: 'NO_RECOMMENDATION',
   reason: 'NO_EVIDENCE',
@@ -171,6 +174,7 @@ const SOL_NO_RECOMMENDATION: Decision = {
 /** BTCUSDT + ETHUSDT + SOLUSDT — one BUY, one SELL, one inactive. */
 const MULTI_ASSET_REPORT: DecisionReport = {
   cycleId: 'cycle_e2e_multi_asset',
+  market: 'crypto',
   computedAt: T,
   decisions: [BTC_DECISION, ETH_DECISION, SOL_NO_RECOMMENDATION],
 };
@@ -178,6 +182,7 @@ const MULTI_ASSET_REPORT: DecisionReport = {
 /** Every configured asset is NO_RECOMMENDATION this cycle. */
 const ALL_NO_RECOMMENDATION_REPORT: DecisionReport = {
   cycleId: 'cycle_e2e_all_inactive',
+  market: 'crypto',
   computedAt: T,
   decisions: [
     { ...SOL_NO_RECOMMENDATION, asset: 'BTCUSDT' },
@@ -189,6 +194,7 @@ const ALL_NO_RECOMMENDATION_REPORT: DecisionReport = {
  * `EmptyState variant="no-active"` (no-recommendation-filter-and-i18n D1). */
 const EMPTY_REPORT: DecisionReport = {
   cycleId: 'cycle_e2e_empty',
+  market: 'crypto',
   computedAt: T,
   decisions: [],
 };
@@ -197,8 +203,13 @@ const EMPTY_REPORT: DecisionReport = {
 // Helpers
 // ---------------------------------------------------------------------------
 
+// acciones-market-integration D-D — `OverviewClient` now appends
+// `?market=` to the fetch URL, so the stub pattern must match the query
+// string too (Playwright glob `*` does not span `/` but does span `?`);
+// `'**/api/decisions'` alone (no trailing wildcard) stopped matching once
+// the request URL carried a query string.
 async function stubDecisions(page: import('@playwright/test').Page, report: DecisionReport) {
-  await page.route('**/api/decisions', async (route) => {
+  await page.route('**/api/decisions?**', async (route) => {
     await route.fulfill({ json: report });
   });
 }
@@ -207,7 +218,7 @@ async function stubDecisions(page: import('@playwright/test').Page, report: Deci
  * (`app/api/decisions/route.ts`'s `503 { error, code: 'NO_DATA' }`) so the
  * dashboard's no-data state can be exercised without a live n8n push. */
 async function stubDecisionsUnavailable(page: import('@playwright/test').Page) {
-  await page.route('**/api/decisions', async (route) => {
+  await page.route('**/api/decisions?**', async (route) => {
     await route.fulfill({
       status: 503,
       json: { error: 'Service temporarily unavailable', code: 'NO_DATA' },
@@ -497,6 +508,7 @@ test.describe('Tier 1 — direction filter', () => {
     // Only a Compra asset is actionable this cycle.
     const buyOnlyReport: DecisionReport = {
       cycleId: 'cycle_e2e_buy_only',
+      market: 'crypto',
       computedAt: T,
       decisions: [BTC_DECISION, SOL_NO_RECOMMENDATION],
     };

@@ -46,6 +46,7 @@ function thesisState(thesis: 'bullish' | 'bearish', net: Label, staleScore: numb
 function decisionFixture(bullish: ThesisState, bearish: ThesisState): Decision {
   return {
     asset: 'BTCUSDT',
+    market: 'crypto',
     t: 1_700_000_000_000,
     recommendation: 'BUY',
     bullish,

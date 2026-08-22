@@ -1,3 +1,4 @@
+import { createElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderToString } from 'react-dom/server';
 
@@ -45,6 +46,19 @@ vi.mock('@/app/(dashboard)/lib/markets', () => ({
   MARKET_GROUPS: [],
 }));
 
+/**
+ * acciones-market-integration D.8 — `OverviewClient` gained a required
+ * `market: Market` prop (D.5); this mock replaces the real client island
+ * with a stub that renders the received `market` value directly into the
+ * DOM, so the SSR `renderToString` output can prove the exact prop value
+ * `CryptoDashboardPage` passes, following this file's own established
+ * `vi.mock` + distinguishable-marker convention for `MARKETS` above.
+ */
+vi.mock('@/app/(dashboard)/components/OverviewClient', () => ({
+  OverviewClient: ({ market }: { market: string }) =>
+    createElement('div', { 'data-testid': 'overview-client-market' }, market),
+}));
+
 describe('CryptoDashboardPage — heading is data-driven from MARKETS.crypto.label', () => {
   it('renders the mocked MARKETS.crypto.label in the output HTML, not a hardcoded string', async () => {
     // `inicio-home-section` design.md "Import-path note" — `crypto/page.tsx`
@@ -57,5 +71,16 @@ describe('CryptoDashboardPage — heading is data-driven from MARKETS.crypto.lab
     const html = renderToString(CryptoDashboardPage());
 
     expect(html).toContain(TEST_LABEL);
+  });
+});
+
+describe('CryptoDashboardPage — passes market="crypto" to OverviewClient', () => {
+  it('renders the mocked OverviewClient with market="crypto", not any other market', async () => {
+    const { default: CryptoDashboardPage } = await import('@/app/dashboard/(with-footer)/crypto/page');
+
+    const html = renderToString(CryptoDashboardPage());
+
+    expect(html).toContain('data-testid="overview-client-market"');
+    expect(html).toContain('>crypto<');
   });
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { DecisionReport } from '@/src/domain/types';
+import type { DecisionReport, Market } from '@/src/domain/types';
 import { type Direction, selectByDirection } from '../lib/select';
 import { DecisionCard } from './DecisionCard';
 import { DirectionFilter } from './DirectionFilter';
@@ -36,8 +36,13 @@ type ViewState =
  * `DrilldownPanel` (and, transitively, `ArgumentGraph`/`NarrativePanel`) is
  * mounted ONLY when `selectedDecision` is non-null — never as part of the
  * Tier 1 card grid itself (D7 clause 1).
+ *
+ * `market` (acciones-market-integration D-D) — required, threaded into the
+ * `GET /api/decisions?market=` fetch so each market's overview only ever
+ * polls its own scoped report; the caller (`crypto/page.tsx`,
+ * `acciones/page.tsx`) passes its own market literal.
  */
-export function OverviewClient() {
+export function OverviewClient({ market }: { market: Market }) {
   const [viewState, setViewState] = useState<ViewState>({ kind: 'loading' });
   const [direction, setDirection] = useState<Direction>('ALL');
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
@@ -59,7 +64,7 @@ export function OverviewClient() {
     async function poll() {
       let response: Response;
       try {
-        response = await fetch('/api/decisions');
+        response = await fetch(`/api/decisions?market=${market}`);
       } catch (err) {
         // Network-level failure (e.g. connection refused) — technical detail
         // stays in the console, never reaches the DOM (architecture-agnostic
@@ -102,7 +107,7 @@ export function OverviewClient() {
       cancelled = true;
       clearInterval(id);
     };
-  }, []);
+  }, [market]);
 
   if (viewState.kind === 'loading') {
     return <p className="font-mono text-sm text-muted">Cargando…</p>;

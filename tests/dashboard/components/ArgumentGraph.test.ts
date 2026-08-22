@@ -38,6 +38,7 @@ function decisionFixture(
 ): Decision {
   return {
     asset: 'TESTUSDT',
+    market: 'crypto',
     t: 1_700_000_000_000,
     recommendation,
     bullish: { ...emptyThesis, net: bullishNet },

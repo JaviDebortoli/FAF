@@ -18,6 +18,7 @@ const T = 1700176400000;
 
 const EMPTY_REPORT: DecisionReport = {
   cycleId: 'cycle_e2e_market_nav',
+  market: 'crypto',
   computedAt: T,
   decisions: [],
 };
@@ -38,6 +39,7 @@ const EMPTY_THESIS: ThesisState = {
 function directionFixture(asset: string, recommendation: Decision['recommendation']): Decision {
   return {
     asset,
+    market: 'crypto',
     t: T,
     recommendation,
     bullish: EMPTY_THESIS,
@@ -50,6 +52,7 @@ function directionFixture(asset: string, recommendation: Decision['recommendatio
 
 const DIRECTION_FILTER_REPORT: DecisionReport = {
   cycleId: 'cycle_e2e_direction_filter',
+  market: 'crypto',
   computedAt: T,
   decisions: [
     directionFixture('BTCUSDT', 'BUY'),
@@ -58,8 +61,11 @@ const DIRECTION_FILTER_REPORT: DecisionReport = {
   ],
 };
 
+// acciones-market-integration D-D — `OverviewClient` now appends
+// `?market=` to the fetch URL, so the stub pattern must match the query
+// string too (mirrors the same fix in tests/e2e/dashboard.spec.ts).
 async function stubDecisions(page: Page, report: DecisionReport) {
-  await page.route('**/api/decisions', async (route) => {
+  await page.route('**/api/decisions?**', async (route) => {
     await route.fulfill({ json: report });
   });
 }
@@ -442,17 +448,30 @@ test.describe('No new CDN/font dependency', () => {
 // ---------------------------------------------------------------------------
 // `market-nav-redesign` Phase 3 (PR3), task 3.1 — placeholder-market pages.
 // specs/market-navigation/spec.md "Per-market routing" + "Placeholder-market
-// page" requirements: clicking a non-crypto sidebar link navigates to a real
-// `/dashboard/{slug}` route rendering a shared, honest "próximamente"
+// page" requirements: clicking a non-real-market sidebar link navigates to a
+// real `/dashboard/{slug}` route rendering a shared, honest "próximamente"
 // placeholder — Spanish copy, `role="status"`, no CTA/interest-capture, and a
 // `data-testid` distinct from both `empty-state` and `service-unavailable`.
 // `/dashboard/crypto` must keep resolving to the real dashboard (static route
 // precedence over the new dynamic `[market]` segment), and an unknown slug
 // must 404 via `notFound()`, never crash or silently render a placeholder.
+//
+// `acciones-market-integration` D-D / `MARKETS.acciones.isReal` flip —
+// Acciones is no longer a placeholder market: `specs/market-navigation/spec.md`
+// "Acciones route hosts its own real dashboard" now requires `/dashboard/acciones`
+// to render the Tier 1 overview (same static-over-dynamic route precedence
+// `/dashboard/crypto` already relies on), never the shared placeholder. The
+// former "clicking Acciones navigates to a placeholder" scenario below is
+// replaced with its real-dashboard counterpart; the remaining
+// placeholder-behavior scenarios below still use Forex, per
+// `specs/market-navigation/spec.md`'s own "Remaining non-real markets still
+// render the placeholder" example.
 // ---------------------------------------------------------------------------
 
 test.describe('Placeholder-market pages', () => {
-  test('clicking Acciones navigates to /dashboard/acciones and renders the placeholder', async ({ page }) => {
+  test('clicking Acciones navigates to /dashboard/acciones and renders its own real dashboard, not the placeholder', async ({
+    page,
+  }) => {
     await gotoCrypto(page);
 
     const nav = page.getByRole('navigation', { name: 'Mercados' });
@@ -460,14 +479,12 @@ test.describe('Placeholder-market pages', () => {
 
     await expect(page).toHaveURL(/\/dashboard\/acciones$/);
 
-    const placeholder = page.getByTestId('market-placeholder');
-    await expect(placeholder).toBeVisible();
-    await expect(placeholder).toHaveAttribute('role', 'status');
-    await expect(placeholder).toContainText('Acciones');
-    await expect(placeholder).toContainText('no está disponible');
-
-    await expect(page.getByTestId('empty-state')).toHaveCount(0);
-    await expect(page.getByTestId('service-unavailable')).toHaveCount(0);
+    await expect(page.getByTestId('market-placeholder')).toHaveCount(0);
+    await expect(page.locator('main')).toContainText('Acciones');
+    // `direction-filter-ALL` only exists in the real Tier 1 overview shell
+    // (`OverviewClient`) — proves the acciones route mounted the real
+    // dashboard, not `MarketPlaceholder`.
+    await expect(page.getByTestId('direction-filter-ALL')).toBeVisible();
   });
 
   test('placeholder page has zero CTA / interest-capture affordances', async ({ page }) => {

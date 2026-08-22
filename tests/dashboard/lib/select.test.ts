@@ -18,6 +18,7 @@ const emptyThesis: ThesisState = {
 function decisionFixture(asset: string, recommendation: Recommendation): Decision {
   return {
     asset,
+    market: 'crypto',
     t: 1_700_000_000_000,
     recommendation,
     bullish: emptyThesis,
@@ -29,7 +30,7 @@ function decisionFixture(asset: string, recommendation: Recommendation): Decisio
 }
 
 function reportFixture(decisions: Decision[]): DecisionReport {
-  return { cycleId: 'cycle-1', computedAt: 1_700_000_000_000, decisions };
+  return { cycleId: 'cycle-1', market: 'crypto', computedAt: 1_700_000_000_000, decisions };
 }
 
 describe('selectByDirection', () => {

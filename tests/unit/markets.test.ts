@@ -39,12 +39,16 @@ describe('MARKETS lookup table', () => {
     expect(new Set(allSlugs).size).toBe(allSlugs.length);
   });
 
-  it('marks crypto as the only real market, present with slug "crypto"', () => {
+  it('marks crypto and acciones as the only real markets; every other slug stays false', () => {
     expect(MARKETS.crypto).toBeDefined();
     expect(MARKETS.crypto?.slug).toBe('crypto');
     expect(MARKETS.crypto?.isReal).toBe(true);
 
-    const otherSlugs = Object.keys(MARKETS).filter((slug) => slug !== 'crypto');
+    expect(MARKETS.acciones).toBeDefined();
+    expect(MARKETS.acciones?.slug).toBe('acciones');
+    expect(MARKETS.acciones?.isReal).toBe(true);
+
+    const otherSlugs = Object.keys(MARKETS).filter((slug) => slug !== 'crypto' && slug !== 'acciones');
     expect(otherSlugs.length).toBeGreaterThan(0);
     for (const slug of otherSlugs) {
       expect(MARKETS[slug]?.isReal, `MARKETS.${slug}.isReal must be false`).toBe(false);

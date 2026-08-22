@@ -298,4 +298,124 @@ Zero errors in any Phase A, Phase B, or Phase C file. All remaining errors are e
 **Phase A**: 8/8 tasks complete (A.1-A.8).
 **Phase B**: 9/9 tasks complete (B.1-B.9).
 **Phase C**: 3/3 tasks complete (C.1-C.3). 20/20 focused tests pass; full suite 269/269 pass; `tsc --noEmit` zero errors in Phase A+B+C files — narrative route and its test are the LAST TS-compile-blocking files outside Phase D's dashboard/e2e scope.
-**Cumulative**: 20/46 total tasks complete across Phases A-F. Ready for `sdd-verify` on Phase A+B+C's scope, or `sdd-apply` again for Phase D.
+**Cumulative (superseded by Phase D section below — kept for history)**: 20/46 total tasks complete across Phases A-F. Ready for `sdd-verify` on Phase A+B+C's scope, or `sdd-apply` again for Phase D.
+
+---
+
+# Phase D of 6 — `BETA_MS` Widening + Dashboard Wiring (PR4)
+
+**Scope**: tasks D.1-D.9 only (tasks.md's own Phase D task list), plus the
+mechanical `market: 'crypto'` literal fixes to the 6 files Phase B/C's
+apply-progress explicitly flagged as owed to this phase
+(`tests/dashboard/components/ArgumentGraph.test.ts`,
+`tests/dashboard/components/DecisionCard.test.ts`,
+`tests/dashboard/lib/scores.test.ts`, `tests/dashboard/lib/select.test.ts`,
+`tests/e2e/dashboard.spec.ts`, `tests/e2e/market-nav.spec.ts`) — required for
+D.9's own verify command (`npx tsc --noEmit` + the two `npx playwright test`
+targets) to actually pass, even though tasks.md's D.1-D.9 prose does not name
+every one of these 6 files individually. Phase E (n8n workflow) and Phase F
+(final full-suite verification) are **NOT** started.
+
+## Mode: Strict TDD
+
+## Completed Tasks (Phase D, PR4)
+
+- [x] D.1 `src/cycle/constants.ts`: `BETA_MS = 5 * 24 * 60 * 60 * 1000` (5 days = 120h); replaced the 8h/6h-cadence-derivation comment with design.md D-F's 120h/96h weekend-gap-plus-margin formula (crypto's daily EOD gap ~24h; acciones' longest normal gap is a 4-day holiday long weekend ~96h; 120h clears that with a 24h/~25% margin, also absorbing one missed 6h cron tick post-holiday).
+- [x] D.2 Verified `tests/narrative/cache.test.ts` needs no edit — ran it standalone against the widened `BETA_MS`: 8/8 pass unchanged, confirming every assertion is parametrized on the imported `BETA_MS` symbol, not a hardcoded duration (verify-only task, exactly as tasks.md predicted).
+- [x] D.3 GREEN `app/(dashboard)/lib/markets.ts:33`: flipped `MARKETS.acciones.isReal` from `false` to `true`; updated the `Market.isReal` field's doc comment (was "True only for `crypto`", now names both real markets).
+- [x] D.4 GREEN `tests/unit/markets.test.ts`: rewrote the "marks crypto as the only real market" assertion to "marks crypto and acciones as the only real markets; every other slug stays false" — asserts both `isReal: true`, and every other slug (excluding both) still `false`.
+- [x] D.5 GREEN `app/(dashboard)/components/OverviewClient.tsx`: added a required `market: Market` prop (imported `Market` from `@/src/domain/types`); threaded it into `` fetch(`/api/decisions?market=${market}`) ``; added `market` to the polling `useEffect`'s dependency array (was `[]`) so a market change would correctly restart the poll loop, even though no caller currently remounts `OverviewClient` with a different `market` at runtime.
+- [x] D.6 GREEN `app/dashboard/(with-footer)/crypto/page.tsx`: `<OverviewClient />` -> `<OverviewClient market="crypto" />`.
+- [x] D.7 Created `app/dashboard/(with-footer)/acciones/page.tsx`: mechanical clone of `crypto/page.tsx` — `MARKETS.acciones` (with the same `noUncheckedIndexedAccess` defensive-guard pattern), `<OverviewClient market="acciones" />`, identical `<main>`/`DashboardHeader` chrome and doc-comment conventions. No RED test written for this file per design.md's Testing Strategy ("mechanical clone, no branching logic") — verified GREEN via D.9's full suite run instead (both the direct-render `tests/dashboard/crypto/page.test.ts` pattern and the new e2e "Acciones route hosts its own real dashboard" scenario, see D.9 below, transitively exercise the sibling file's identical code shape).
+- [x] D.8 GREEN `tests/dashboard/crypto/page.test.ts`: added a `vi.mock('@/app/(dashboard)/components/OverviewClient', ...)` stub (mirroring the file's existing `vi.mock('@/app/(dashboard)/lib/markets', ...)` convention) that renders the received `market` prop directly into a `data-testid="overview-client-market"` div, then a new test asserting `CryptoDashboardPage()`'s SSR output contains that div with `crypto` as its text content — proves `market="crypto"` is actually passed, not just that the page renders.
+- [x] D.9 Verify GREEN — full command chain, run in this exact order:
+  1. `npx vitest run tests/unit/markets.test.ts tests/dashboard tests/narrative/cache.test.ts` — 58/58 pass (11 files).
+  2. `npx tsc --noEmit` (full repo) — **zero errors anywhere**, confirmed clean after also fixing the 6 orphaned files below.
+  3. `npx playwright test tests/e2e/dashboard.spec.ts tests/e2e/market-nav.spec.ts` — **52/52 pass**, after two additional required fixes (see "Additional fixes required for D.9" below).
+  4. Full-repo re-verification (beyond D.9's literal scope, done to confirm the "first fully green non-n8n suite" claim): `npx vitest run` — **270/270 pass across 41 files**; `npx tsc --noEmit` re-run clean; both e2e files re-run clean.
+
+## Additional fixes required for D.9 (beyond tasks.md's literal D.1-D.9 text)
+
+1. **Mechanical `market: 'crypto'` literal additions** to the 6 files Phase B/C's apply-progress explicitly flagged as "owed to Phase D" (confirmed by this phase's own `tsc --noEmit` baseline run, which reproduced exactly this error set and no others before any Phase D edit):
+   - `tests/dashboard/components/ArgumentGraph.test.ts` — `decisionFixture()`'s `Decision` literal.
+   - `tests/dashboard/components/DecisionCard.test.ts` — `decisionFixture()`'s `Decision` literal.
+   - `tests/dashboard/lib/scores.test.ts` — `decisionFixture()`'s `Decision` literal.
+   - `tests/dashboard/lib/select.test.ts` — `decisionFixture()`'s `Decision` literal AND `reportFixture()`'s `DecisionReport` literal.
+   - `tests/e2e/dashboard.spec.ts` — `BTC_DECISION`, `ETH_DECISION`, `SOL_NO_RECOMMENDATION` (`Decision`), `MULTI_ASSET_REPORT`, `ALL_NO_RECOMMENDATION_REPORT`, `EMPTY_REPORT`, `buyOnlyReport` (`DecisionReport`) — 7 literals total.
+   - `tests/e2e/market-nav.spec.ts` — `EMPTY_REPORT`, `directionFixture()`'s `Decision` literal, `DIRECTION_FILTER_REPORT` — 3 literals total.
+   All fixed with the minimal `market: 'crypto'` addition, matching the pattern Phase A/B/C already established elsewhere (`tests/cycle/idempotency.test.ts`, `tests/golden/paper-example.test.ts`) — these are all crypto-context fixtures, no behavior change.
+2. **Two e2e route-stub glob-pattern fixes — a genuine bugfix, not a mechanical literal addition.** `OverviewClient`'s D.5 change appends `?market=` to its `GET /api/decisions` fetch. Both e2e files' `stubDecisions`/`stubDecisionsUnavailable` helpers used `page.route('**/api/decisions', ...)` (no trailing wildcard) — Playwright's glob matching requires the pattern to match the full request URL including the query string, so once the fetch carried `?market=crypto`, the stub silently stopped intercepting and every card-grid assertion in `tests/e2e/dashboard.spec.ts` started failing with `element(s) not found` (confirmed by an isolated `-g "renders a card for every asset"` run against the pre-fix pattern: real failure, not a flake). Fixed by widening the pattern to `'**/api/decisions?**'` in `tests/e2e/dashboard.spec.ts` (both `stubDecisions` and `stubDecisionsUnavailable`) and `tests/e2e/market-nav.spec.ts` (`stubDecisions`); re-ran the same isolated test after the fix to confirm it now passes, then the full 52-test run.
+3. **One e2e test rewritten for spec-mandated new behavior, not a mechanical fix.** `tests/e2e/market-nav.spec.ts`'s "clicking Acciones navigates to /dashboard/acciones and renders the placeholder" test directly contradicted `specs/market-navigation/spec.md`'s new "Acciones route hosts its own real dashboard" requirement (D.3's `isReal` flip + D.7's new static route mean `/dashboard/acciones` now resolves to the real Tier 1 overview via Next.js's static-over-dynamic route precedence, the same mechanism `crypto/page.tsx` already relies on — confirmed failing at runtime, not compile time, when run unmodified: `market-placeholder` testid timed out with "element(s) not found"). Rewrote the test to assert the new mandated behavior instead — `market-placeholder` has zero count, `<main>` contains "Acciones", and `direction-filter-ALL` (only present in the real `OverviewClient` shell) is visible — following the spec delta's own "Acciones route hosts its own real dashboard" scenario text almost verbatim. The remaining placeholder-behavior scenarios in the same `describe` block (CTA-free, static-route-precedence, 404-on-unknown-slug, determinism-disclaimer) already used Forex as their example market (per `specs/market-navigation/spec.md`'s own "Remaining non-real markets still render the placeholder" scenario, which explicitly names Forex) and needed no change.
+
+## Files Changed (Phase D)
+
+| File | Action | What Was Done |
+|------|--------|---------------|
+| `src/cycle/constants.ts` | Modified | `BETA_MS` widened to 5 days (120h); derivation comment replaced per design.md D-F |
+| `app/(dashboard)/lib/markets.ts` | Modified | `MARKETS.acciones.isReal` -> `true`; `Market.isReal` doc comment updated |
+| `tests/unit/markets.test.ts` | Modified | "only crypto is real" assertion widened to accept acciones too |
+| `app/(dashboard)/components/OverviewClient.tsx` | Modified | Required `market: Market` prop; threaded into fetch URL + effect deps |
+| `app/dashboard/(with-footer)/crypto/page.tsx` | Modified | Passes `market="crypto"` to `<OverviewClient />` |
+| `app/dashboard/(with-footer)/acciones/page.tsx` | Created | Mechanical clone of `crypto/page.tsx` — `MARKETS.acciones`, `market="acciones"` |
+| `tests/dashboard/crypto/page.test.ts` | Modified | New `vi.mock`'d `OverviewClient` + test asserting `market="crypto"` is passed |
+| `tests/dashboard/components/ArgumentGraph.test.ts` | Modified | `market: 'crypto'` added to `Decision` fixture (mechanical, owed from Phase B/C) |
+| `tests/dashboard/components/DecisionCard.test.ts` | Modified | `market: 'crypto'` added to `Decision` fixture (mechanical, owed from Phase B/C) |
+| `tests/dashboard/lib/scores.test.ts` | Modified | `market: 'crypto'` added to `Decision` fixture (mechanical, owed from Phase B/C) |
+| `tests/dashboard/lib/select.test.ts` | Modified | `market: 'crypto'` added to `Decision`/`DecisionReport` fixtures (mechanical, owed from Phase B/C) |
+| `tests/e2e/dashboard.spec.ts` | Modified | `market: 'crypto'` added to 7 `Decision`/`DecisionReport` fixtures (mechanical); `stubDecisions`/`stubDecisionsUnavailable` glob pattern fixed to `'**/api/decisions?**'` (genuine bugfix) |
+| `tests/e2e/market-nav.spec.ts` | Modified | `market: 'crypto'` added to 3 `Decision`/`DecisionReport` fixtures (mechanical); `stubDecisions` glob pattern fixed to `'**/api/decisions?**'` (genuine bugfix); "clicking Acciones" placeholder test rewritten for the new real-dashboard behavior (spec-mandated) |
+| `openspec/changes/acciones-market-integration/tasks.md` | Modified | Marked D.1-D.9 `[x]`, with a note on the additional required fixes |
+
+## TDD Cycle Evidence (Phase D)
+
+| Task | Test File | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
+|------|-----------|-------|------------|-----|-------|-------------|----------|
+| D.1 | N/A (constant-only) | N/A | N/A | ➖ Structural (constant value + comment, no branching) — Triangulation skipped: no dedicated test asserts `BETA_MS`'s exact numeric value; every consumer test is parametrized on the symbol | ➖ | ➖ Skipped: purely structural | ➖ None needed |
+| D.2 | `tests/narrative/cache.test.ts` | Unit | ✅ 8/8 (baseline before D.1) | N/A — regression-only task, no edit made | ✅ 8/8 unchanged after D.1 | ➖ N/A | ➖ None needed |
+| D.3/D.4 | `tests/unit/markets.test.ts` | Unit | ✅ 6/6 (baseline before edit) | ✅ Written — widened assertion; ran against unmodified `markets.ts`: 1/6 failed for the right reason (`MARKETS.acciones?.isReal` was `false`, expected `true`) | ✅ Passed — 6/6 after D.3 | ➖ Single scenario — one boolean flip, no second market/state to triangulate against beyond the existing "every other slug still false" loop (already exercises N-1 other cases) | ➖ None needed |
+| D.5/D.6/D.8 | `tests/dashboard/crypto/page.test.ts` | Unit (SSR component) | ✅ 1/1 (baseline before edit) | ✅ Written — new `vi.mock`'d `OverviewClient` + assertion test; ran against unmodified `OverviewClient.tsx`/`crypto/page.tsx`: failed for the right reason (`<OverviewClient />` called with no `market` prop, mocked stub rendered an empty div, `>crypto<` not found in output) | ✅ Passed — 2/2 after D.5+D.6 | ➖ Single scenario — one page, one market literal; `acciones/page.tsx`'s identical shape is covered transitively (D.7's own note) and by D.9's e2e "Acciones route hosts its own real dashboard" scenario, not a second unit-test case here | ➖ None needed — `market` dependency-array addition is the only refinement, verified still-green |
+| D.7 | N/A (no dedicated unit test, per design.md) | N/A | N/A (new file) | ➖ N/A — design.md's Testing Strategy explicitly classifies this as GREEN-only ("mechanical clone, no branching logic") | ✅ Verified via D.9's full suite (`tests/dashboard/crypto/page.test.ts`'s pattern applies identically; e2e "Acciones route hosts its own real dashboard" scenario exercises the live route) | ➖ N/A | ➖ None needed |
+| D.9 (mechanical fixture fixes) | 6 files (see "Additional fixes" above) | Unit + E2E | ✅ (each file's pre-edit state was a `tsc` compile error, not a runtime failure — vitest transpiles without typechecking, so all 6 files' tests were already passing at the *runtime* layer before this fix; the fix closes the *type* layer) | N/A — mechanical literal additions, not new behavior | ✅ All 6 files pass after the fix (confirmed via full `npx vitest run` + `npx playwright test`) | ➖ Skipped: purely structural literal additions, no branching | ➖ None needed |
+| D.9 (e2e route-stub pattern fix) | `tests/e2e/dashboard.spec.ts`, `tests/e2e/market-nav.spec.ts` | E2E | ✅ N/A — this is itself the regression this batch introduced via D.5, caught by this batch's own D.9 verify step | ✅ Implicit — isolated `-g "renders a card for every asset"` run against the unfixed glob pattern failed for the right reason (`element(s) not found`, stub not intercepting) | ✅ Same isolated test passes after the `'**/api/decisions?**'` fix; then full 52-test suite passes | ➖ N/A — one root cause, one fix, verified across both files | ➖ None needed |
+| D.9 (acciones-placeholder e2e rewrite) | `tests/e2e/market-nav.spec.ts` | E2E | ✅ N/A — old test ran and failed for the right reason against the new D.3/D.7 code (`market-placeholder` timed out, real dashboard rendered instead) before the rewrite | ✅ Confirmed old assertion fails against new code (proves the behavior genuinely changed, not a flake) | ✅ Rewritten test passes — `market-placeholder` count 0, `<main>` contains "Acciones", `direction-filter-ALL` visible | ➖ N/A — one scenario per spec delta's own scenario text | ➖ None needed |
+
+### Test Summary (Phase D)
+
+- **Total tests written/modified**: 1 new (`tests/unit/markets.test.ts`, widened) + 1 new (`tests/dashboard/crypto/page.test.ts`) + 10 mechanical fixture literal fixes (6 files) + 2 e2e helper glob-pattern fixes + 1 e2e test rewrite = 15 total touch points
+- **Total tests passing**: 58/58 in D.9's own focused vitest scope; 270/270 in the full repo vitest suite (41 files); 52/52 in the full e2e suite (both `tests/e2e/*.spec.ts` files — the repo's entire e2e test surface)
+- **Layers used**: Unit (58 focused / 270 full-repo), E2E (52)
+- **Approval tests** (refactoring): None — no refactoring tasks; all edits are new-behavior changes or mechanical fixture fixes
+- **Pure functions created**: 0 new (`OverviewClient`'s fetch-URL templating is inline, not extracted to a separate pure function — consistent with the file's existing style, no duplication to justify extraction)
+
+## Deviations from Design
+
+1. **Two e2e route-stub glob-pattern fixes and one e2e test rewrite, none named in tasks.md's D.1-D.9 text.** Both are direct, unavoidable consequences of D.5 (`?market=` query string) and D.3+D.7 (acciones going real) respectively — not scope creep, but the exact "verify D.9 passes" requirement tasks.md's own D.9 line states. Documented in detail under "Additional fixes required for D.9" above; flagging here per this skill's "note any deviations, don't silently deviate" rule.
+2. **`market` added to `OverviewClient`'s polling `useEffect` dependency array** (was `[]`), not explicitly specified in design.md D-D. This is the technically-correct React behavior for a value now read inside the effect (avoids a stale-closure bug if any future caller ever remounts `OverviewClient` with a changed `market` prop without a full page navigation) — no current caller exercises this (both `crypto/page.tsx` and `acciones/page.tsx` pass a `market` that never changes for the lifetime of the mount), so this is defensive correctness, not a behavior change either test suite can currently observe.
+
+## Issues Found
+
+None beyond the two consequences of D.5/D.3+D.7 documented above (both fixed within this same batch, not deferred).
+
+## Remaining Tasks (Phase E onward — NOT started)
+
+- [ ] Phase E: n8n workflow — Acciones branch via Twelve Data (PR5, manual-verification gate) — `n8n/faf-workflow.json`, `n8n/POST_IMPORT_STEPS.md`
+- [ ] Phase F: final full-suite verification (after PR1-PR5 merge)
+
+## Workload / PR Boundary (Phase D)
+
+- Mode: chained PR slice (`stacked-to-main`, per tasks.md's Delivery Route Recommendation)
+- Current work unit: Unit 4 / PR4 (Phase D only)
+- Boundary: starts from `src/cycle/constants.ts`'s `BETA_MS` widening, ends at D.9's verify command. Touches the 7 files tasks.md's Suggested Work Unit 4 rollback boundary names, plus the 6 orphaned test files Phase B/C's apply-progress explicitly flagged as owed to this phase, plus `tasks.md` — no Phase E (`n8n/`) files touched.
+- Estimated review budget impact: within PR4's forecasted slice; larger than PR1-PR3 due to the 6 owed mechanical fixture fixes + 2 e2e bugfixes + 1 e2e rewrite, all directly required for D.9's own verify command, not optional additions
+
+## `npx tsc --noEmit` — Full Repo Status After Phase D
+
+**Zero errors anywhere in the repository.** This is the first phase where the complete non-n8n TypeScript surface compiles clean — Phase A/B/C each left a documented, shrinking set of downstream-caller errors (see their own apply-progress sections' "Still-Expected Downstream Errors" tables); Phase D's scope was exactly that final remaining set, now fully closed.
+
+## Status
+
+**Phase A**: 8/8 tasks complete (A.1-A.8).
+**Phase B**: 9/9 tasks complete (B.1-B.9).
+**Phase C**: 3/3 tasks complete (C.1-C.3).
+**Phase D**: 9/9 tasks complete (D.1-D.9). 58/58 focused tests pass; full suite 270/270 pass; full e2e suite 52/52 pass; `npx tsc --noEmit` — **zero errors anywhere in the repo** (first fully-green non-n8n verification point in this change).
+**Cumulative**: 29/46 total tasks complete across Phases A-F. Ready for `sdd-verify` on Phase A+B+C+D's scope, or `sdd-apply` again for Phase E (n8n workflow, manual-verification gate).

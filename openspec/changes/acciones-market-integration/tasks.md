@@ -57,15 +57,15 @@ Chain strategy: stacked-to-main
 
 ## Phase D: `BETA_MS` Widening + Dashboard Wiring (PR4)
 
-- [ ] D.1 `src/cycle/constants.ts`: `BETA_MS = 5 * 24 * 60 * 60 * 1000` (120h); replace the 8h-derivation comment with design.md's 120h/96h weekend-gap-plus-margin formula.
-- [ ] D.2 Verify `tests/narrative/cache.test.ts` needs no edits — every assertion is parametrized on the imported `BETA_MS` symbol, not a hardcoded duration; run it as a regression check only (design.md's Testing Strategy table calls for an update, but the on-disk file already reads `BETA_MS` symbolically, so this is a verify-only task, not a GREEN edit).
-- [ ] D.3 GREEN `app/(dashboard)/lib/markets.ts:33`: flip `MARKETS.acciones.isReal` from `false` to `true`.
-- [ ] D.4 GREEN `tests/unit/markets.test.ts`: update the "marks crypto as the only real market" assertion to also accept `acciones` as real (both `isReal: true`; every other slug still `false`).
-- [ ] D.5 GREEN `app/(dashboard)/components/OverviewClient.tsx`: add a required `market: Market` prop; thread it into `` fetch(`/api/decisions?market=${market}`) ``.
-- [ ] D.6 GREEN `app/dashboard/(with-footer)/crypto/page.tsx`: pass `market="crypto"` to `<OverviewClient />`.
-- [ ] D.7 Create `app/dashboard/(with-footer)/acciones/page.tsx`: mechanical clone of `crypto/page.tsx` — `MARKETS.acciones`, `<OverviewClient market="acciones" />` (no new RED test required, per design.md's Testing Strategy — mechanical clone, no branching logic).
-- [ ] D.8 GREEN `tests/dashboard/crypto/page.test.ts`: update for `OverviewClient`'s new required `market` prop (assert `market="crypto"` is passed).
-- [ ] D.9 Verify GREEN: `npx vitest run tests/unit/markets.test.ts tests/dashboard tests/narrative/cache.test.ts` + `npx tsc --noEmit` + `npx playwright test tests/e2e/dashboard.spec.ts tests/e2e/market-nav.spec.ts`.
+- [x] D.1 `src/cycle/constants.ts`: `BETA_MS = 5 * 24 * 60 * 60 * 1000` (120h); replace the 8h-derivation comment with design.md's 120h/96h weekend-gap-plus-margin formula.
+- [x] D.2 Verify `tests/narrative/cache.test.ts` needs no edits — every assertion is parametrized on the imported `BETA_MS` symbol, not a hardcoded duration; run it as a regression check only (design.md's Testing Strategy table calls for an update, but the on-disk file already reads `BETA_MS` symbolically, so this is a verify-only task, not a GREEN edit).
+- [x] D.3 GREEN `app/(dashboard)/lib/markets.ts:33`: flip `MARKETS.acciones.isReal` from `false` to `true`.
+- [x] D.4 GREEN `tests/unit/markets.test.ts`: update the "marks crypto as the only real market" assertion to also accept `acciones` as real (both `isReal: true`; every other slug still `false`).
+- [x] D.5 GREEN `app/(dashboard)/components/OverviewClient.tsx`: add a required `market: Market` prop; thread it into `` fetch(`/api/decisions?market=${market}`) ``.
+- [x] D.6 GREEN `app/dashboard/(with-footer)/crypto/page.tsx`: pass `market="crypto"` to `<OverviewClient />`.
+- [x] D.7 Create `app/dashboard/(with-footer)/acciones/page.tsx`: mechanical clone of `crypto/page.tsx` — `MARKETS.acciones`, `<OverviewClient market="acciones" />` (no new RED test required, per design.md's Testing Strategy — mechanical clone, no branching logic).
+- [x] D.8 GREEN `tests/dashboard/crypto/page.test.ts`: update for `OverviewClient`'s new required `market` prop (assert `market="crypto"` is passed).
+- [x] D.9 Verify GREEN: `npx vitest run tests/unit/markets.test.ts tests/dashboard tests/narrative/cache.test.ts` + `npx tsc --noEmit` + `npx playwright test tests/e2e/dashboard.spec.ts tests/e2e/market-nav.spec.ts`. (Also closed the Phase B/C-flagged `tsc --noEmit` blast radius — see apply-progress Phase D section — and fixed two e2e route-stub glob patterns + rewrote one now-superseded placeholder-scenario e2e test, both required for D.9's playwright run to pass now that `OverviewClient` appends `?market=` and `MARKETS.acciones.isReal` is `true`.)
 
 ## Phase E: n8n Workflow — Acciones Branch via Twelve Data (PR5) — [MANUAL-VERIFICATION-ONLY] gate at verify/archive
 

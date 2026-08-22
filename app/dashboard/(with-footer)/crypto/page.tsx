@@ -54,7 +54,7 @@ export default function CryptoDashboardPage() {
     <main className="mx-auto flex min-h-[calc(100vh-12rem)] max-w-6xl flex-col gap-8 px-6 py-10">
       <DashboardHeader title={cryptoMarket.label} showDisclaimer />
 
-      <OverviewClient />
+      <OverviewClient market="crypto" />
     </main>
   );
 }

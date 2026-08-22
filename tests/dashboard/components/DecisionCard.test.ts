@@ -26,6 +26,7 @@ const emptyThesis: ThesisState = {
 function decisionFixture(asset: string, recommendation: Recommendation): Decision {
   return {
     asset,
+    market: 'crypto',
     t: 1_700_000_000_000,
     recommendation,
     bullish: { ...emptyThesis, net: { gamma: 0.75, rho: 0.05 } },

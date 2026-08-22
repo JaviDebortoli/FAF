@@ -1,20 +1,24 @@
 /**
- * Presentation-cache TTL for `src/cycle/latest.ts`'s in-memory single-entry
- * cache — consumed by `app/api/cycle/route.ts`'s `cache.put(report, BETA_MS)`
+ * Presentation-cache TTL for `src/cycle/latest.ts`'s market-keyed cache —
+ * consumed by `app/api/cycle/route.ts`'s `cache.put(market, report, BETA_MS)`
  * and reused as `src/narrative/cache.ts`'s default `ttlMs` param. NOT the
  * paper's Cuadro 1 β (that is `WindowSpec.beta: 1`, a dimensionless
  * candle-count wired into `src/domain/types.ts` — unrelated to this
  * millisecond duration; the two share only a name).
  *
- * Set to 8h: n8n's Schedule Trigger cadence is 6h (n8n-cadence-6h), plus a
- * ~33% safety margin. A tighter 7h was considered and rejected — the cost of
- * this TTL being too short is a full recurrence of the dead-window bug this
- * change fixes (cache expires before the next push, reads 503/404 with no
- * stale data to fall back on), while the cost of it being slightly too long
- * is only marginally staler displayed data in the common case. That
- * asymmetry favors the larger margin.
+ * Set to 5 days (120h), one shared constant for both markets
+ * (acciones-market-integration D-F): crypto's normal EOD gap is ~24h (D1:
+ * daily candles, trades every day). Acciones' longest **normal** gap is a
+ * 4-day holiday long weekend (Friday close -> Tuesday open) ~= 96h. 120h
+ * exceeds 96h with a 24h (~25%) margin — enough to also absorb one missed 6h
+ * cron tick after a holiday reopen (96h + 6h = 102h < 120h) — while staying
+ * bounded, not "unboundedly large". A per-market TTL map was considered and
+ * rejected: it adds a second axis of complexity for a value that only needs
+ * to be "large enough for the larger market"; crypto simply gets a
+ * wider-than-strictly-needed window, which is safe (asymmetry favors the
+ * larger margin, same rationale as the prior 8h/6h derivation this replaces).
  */
-export const BETA_MS = 8 * 60 * 60 * 1000;
+export const BETA_MS = 5 * 24 * 60 * 60 * 1000;
 
 /**
  * Hard cap on `POST /api/cycle`'s payload asset count (T-1, dynamic-asset-count

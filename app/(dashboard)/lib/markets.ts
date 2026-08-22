@@ -19,8 +19,9 @@ export interface Market {
   label: string;
   /** Icon component name — must be a key of `Icons` (`components/icons.tsx`). */
   icon: keyof typeof Icons;
-  /** True only for `crypto` — the sole market with real backend data. Every
-   * other market renders PR3's shared "próximamente" placeholder. */
+  /** True for `crypto` and `acciones` — the two markets with real backend
+   * data (acciones-market-integration D-A/D-F). Every other market renders
+   * PR3's shared "próximamente" placeholder. */
   isReal: boolean;
 }
 
@@ -30,7 +31,7 @@ export interface MarketGroup {
 }
 
 export const MARKETS: Record<string, Market> = {
-  acciones: { slug: 'acciones', label: 'Acciones', icon: 'TrendingUp', isReal: false },
+  acciones: { slug: 'acciones', label: 'Acciones', icon: 'TrendingUp', isReal: true },
   crypto: { slug: 'crypto', label: 'Criptomonedas', icon: 'Coins', isReal: true },
   'renta-fija': { slug: 'renta-fija', label: 'Renta Fija', icon: 'Bank', isReal: false },
   forex: { slug: 'forex', label: 'Forex', icon: 'Swap', isReal: false },
