@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { DecisionReport } from '@/src/domain/types';
-import { type Direction, selectActionable } from '../lib/select';
+import { type Direction, selectByDirection } from '../lib/select';
 import { DecisionCard } from './DecisionCard';
 import { DirectionFilter } from './DirectionFilter';
 import { DrilldownPanel } from './DrilldownPanel';
@@ -113,8 +113,7 @@ export function OverviewClient() {
   }
 
   const report = viewState.report;
-  const allActionable = selectActionable(report, 'ALL');
-  const visible = selectActionable(report, direction);
+  const visible = selectByDirection(report, direction);
   const selectedDecision = selectedAsset ? (report.decisions.find((d) => d.asset === selectedAsset) ?? null) : null;
 
   return (
@@ -122,10 +121,16 @@ export function OverviewClient() {
       <DirectionFilter value={direction} onChange={setDirection} />
 
       {visible.length === 0 ? (
-        allActionable.length === 0 ? (
+        report.decisions.length === 0 ? (
+          // no-recommendation-filter-and-i18n D1: `no-active` fires only when
+          // the report itself is empty — NO_RECOMMENDATION assets now render
+          // their own muted card and are never "inactive" by themselves.
           <EmptyState variant="no-active" />
         ) : (
-          <EmptyState variant="filtered" direction={direction === 'BUY' ? 'BUY' : 'SELL'} />
+          // Safe per design.md's proof: `visible.length === 0` with a
+          // non-empty report can only happen when `direction !== 'ALL'`
+          // (an 'ALL' selection returns `report.decisions` verbatim).
+          <EmptyState variant="filtered" direction={direction as Exclude<Direction, 'ALL'>} />
         )
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

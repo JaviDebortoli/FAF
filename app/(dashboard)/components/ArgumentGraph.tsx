@@ -25,7 +25,12 @@ export function ArgumentGraph({ decision }: ArgumentGraphProps) {
   const layout = layoutArgumentGraph(decision.trace.evidences);
   const { sigmaPlus, sigmaMinus } = computeScores(decision);
   const sigmaByThesis: Record<Thesis, number> = { bullish: sigmaPlus, bearish: sigmaMinus };
-  const winningThesis: Thesis = decision.recommendation === 'BUY' ? 'bullish' : 'bearish';
+  // no-recommendation-filter-and-i18n D2: derive from scores directly, never
+  // from the recommendation label — mathematically equivalent to the old
+  // `recommendation === 'BUY'` ternary for BUY/SELL (policy.ts's threshold
+  // logic already implies this), and correct for NO_RECOMMENDATION, which
+  // the old ternary silently defaulted to bearish.
+  const winningThesis: Thesis = sigmaPlus >= sigmaMinus ? 'bullish' : 'bearish';
   const nodeById = new Map(layout.nodes.map((node) => [node.id, node]));
   const titleId = `graph-title-${decision.asset}`;
   const descId = `graph-desc-${decision.asset}`;

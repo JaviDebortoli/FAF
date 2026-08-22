@@ -1,8 +1,15 @@
+import type { Direction } from '../lib/select';
+
 interface EmptyStateProps {
-  /** `no-active` = nothing actionable this cycle (all NO_RECOMMENDATION);
-   * `filtered` = the direction filter excluded every actionable card. */
+  /** `no-active` = the report itself has zero decisions (genuinely empty —
+   * no-recommendation-filter-and-i18n D1 rescoped this from "nothing
+   * actionable this cycle", since NO_RECOMMENDATION assets now render their
+   * own muted card and are never "empty"); `filtered` = the direction filter
+   * excluded every card from a non-empty report. */
   variant: 'no-active' | 'filtered';
-  direction?: 'BUY' | 'SELL';
+  /** `'ALL'` can never reach the `filtered` variant — an empty `ALL` result
+   * means the report itself is empty, which is the `no-active` case. */
+  direction?: Exclude<Direction, 'ALL'>;
 }
 
 /**

@@ -8,12 +8,17 @@ interface ThesisScoresProps {
 /**
  * design.md "SVG Argumentation Graph": renders `aggregated`/`net`/sigma/theta
  * from `lib/scores.ts`'s canonical recompute — never `ThesisState.score`.
- * Highlights whichever side matches `decision.recommendation`. Tier-2-only
- * per D7 — imported exclusively by `DrilldownPanel`.
+ * Highlights whichever side has the higher sigma score (`sigmaPlus >=
+ * sigmaMinus`, no-recommendation-filter-and-i18n D2) — never inferred from
+ * `decision.recommendation`. Tier-2-only per D7 — imported exclusively by
+ * `DrilldownPanel`.
  */
 export function ThesisScores({ decision }: ThesisScoresProps) {
   const { sigmaPlus, sigmaMinus } = computeScores(decision);
-  const winningThesis: Thesis = decision.recommendation === 'BUY' ? 'bullish' : 'bearish';
+  // no-recommendation-filter-and-i18n D2: derive from scores directly, never
+  // from the recommendation label (see ArgumentGraph.tsx for the identical
+  // fix and rationale).
+  const winningThesis: Thesis = sigmaPlus >= sigmaMinus ? 'bullish' : 'bearish';
 
   return (
     <dl className="grid shrink-0 grid-cols-2 gap-3" data-testid="thesis-scores">

@@ -138,7 +138,12 @@ const ETH_DECISION: Decision = {
   },
 };
 
-/** SOLUSDT NO_RECOMMENDATION decision — MUST produce no card anywhere. */
+/**
+ * SOLUSDT NO_RECOMMENDATION decision — no-recommendation-filter-and-i18n
+ * (D1) reverses the prior hide-invariant: this now MUST render a muted card
+ * (`--color-inactive`, `data-recommendation="NO_RECOMMENDATION"`), not be
+ * omitted.
+ */
 const SOL_NO_RECOMMENDATION: Decision = {
   asset: 'SOLUSDT',
   t: T,
@@ -178,6 +183,14 @@ const ALL_NO_RECOMMENDATION_REPORT: DecisionReport = {
     { ...SOL_NO_RECOMMENDATION, asset: 'BTCUSDT' },
     { ...SOL_NO_RECOMMENDATION, asset: 'ETHUSDT' },
   ],
+};
+
+/** Genuinely empty report — zero decisions. The only case that MUST fire
+ * `EmptyState variant="no-active"` (no-recommendation-filter-and-i18n D1). */
+const EMPTY_REPORT: DecisionReport = {
+  cycleId: 'cycle_e2e_empty',
+  computedAt: T,
+  decisions: [],
 };
 
 // ---------------------------------------------------------------------------
@@ -281,11 +294,13 @@ async function stubNarrativeStreaming(page: import('@playwright/test').Page, chu
 const RULE_IDS = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8'] as const;
 
 // ---------------------------------------------------------------------------
-// Task 6.1 — card grid renders actionable assets only
+// no-recommendation-filter-and-i18n Phase 1 (task 1.8) — card grid renders
+// every asset, including a visually distinct muted card for
+// NO_RECOMMENDATION (D1 reversal of the prior hide-invariant).
 // ---------------------------------------------------------------------------
 
 test.describe('Tier 1 — card grid', () => {
-  test('renders a card only for BUY/SELL assets, none for NO_RECOMMENDATION', async ({ page }) => {
+  test('renders a card for every asset, including a muted card for NO_RECOMMENDATION', async ({ page }) => {
     await stubDecisions(page, MULTI_ASSET_REPORT);
     // Safety net per the phase instruction: never let a stray drilldown open
     // during this test reach a real Claude call.
@@ -295,12 +310,19 @@ test.describe('Tier 1 — card grid', () => {
 
     const btcCard = page.getByTestId('decision-card-BTCUSDT');
     const ethCard = page.getByTestId('decision-card-ETHUSDT');
+    const solCard = page.getByTestId('decision-card-SOLUSDT');
     await expect(btcCard).toBeVisible();
     await expect(ethCard).toBeVisible();
+    await expect(solCard).toBeVisible();
     await expect(btcCard).toContainText('BUY');
     await expect(ethCard).toContainText('SELL');
 
-    await expect(page.getByTestId('decision-card-SOLUSDT')).toHaveCount(0);
+    // D2 regression guard: the SOLUSDT (NO_RECOMMENDATION) card must not be
+    // mislabeled as SELL — this is the coercion bug the same change fixes.
+    await expect(solCard.getByTestId('recommendation-badge')).toHaveAttribute(
+      'data-recommendation',
+      'NO_RECOMMENDATION',
+    );
   });
 });
 
@@ -346,12 +368,35 @@ test.describe('Direct /dashboard/crypto visit', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 6.2 — all-NO_RECOMMENDATION fixture -> explicit empty state
+// no-recommendation-filter-and-i18n Phase 1 (task 1.9) — `no-active` empty
+// state is rescoped to fire only when the report has zero decisions (D1). An
+// all-NO_RECOMMENDATION report is no longer "empty" — it renders one muted
+// card per asset.
 // ---------------------------------------------------------------------------
 
 test.describe('Tier 1 — empty states', () => {
-  test('shows an explicit empty state, not a blank page, when nothing is actionable', async ({ page }) => {
+  test('renders one muted card per asset when every decision is NO_RECOMMENDATION, not an empty state', async ({
+    page,
+  }) => {
     await stubDecisions(page, ALL_NO_RECOMMENDATION_REPORT);
+    await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
+
+    await page.goto('/dashboard/crypto');
+
+    const btcCard = page.getByTestId('decision-card-BTCUSDT');
+    const ethCard = page.getByTestId('decision-card-ETHUSDT');
+    await expect(btcCard).toBeVisible();
+    await expect(ethCard).toBeVisible();
+    await expect(btcCard.getByTestId('recommendation-badge')).toHaveAttribute(
+      'data-recommendation',
+      'NO_RECOMMENDATION',
+    );
+
+    await expect(page.getByTestId('empty-state')).toHaveCount(0);
+  });
+
+  test('shows the "no-active" empty state only when the report has zero decisions', async ({ page }) => {
+    await stubDecisions(page, EMPTY_REPORT);
     await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
 
     await page.goto('/dashboard/crypto');
