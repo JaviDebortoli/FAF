@@ -740,6 +740,42 @@ test.describe('Tier 2 — graceful degradation', () => {
     await expect(narrative.getByTestId('narrative-failed')).toBeVisible();
     await expect(narrative.getByRole('button', { name: 'Reintentar' })).toBeVisible();
   });
+
+  // no-recommendation-filter-and-i18n (D1) reversed the hide-invariant that
+  // made every NO_RECOMMENDATION card unreachable — its drill-down click-
+  // through is now a real, newly-reachable path (verify-report.md CRITICAL
+  // finding) and needs its own coverage, not just the BUY/SELL cases above.
+  // Mirrors the real route's 409 NOT_APPLICABLE contract
+  // (app/api/decisions/[asset]/narrative/route.ts:187-188) via
+  // stubNarrativeError, matching the existing NARRATIVE_DISABLED/
+  // UPSTREAM_ERROR tests' pattern exactly.
+  test('NO_RECOMMENDATION card opens its drill-down; graph + scores render, narrative shows unavailable', async ({
+    page,
+  }) => {
+    await stubDecisions(page, MULTI_ASSET_REPORT);
+    await stubNarrativeError(page, 409, 'NOT_APPLICABLE');
+
+    await page.goto('/dashboard/crypto');
+    await page.getByTestId('decision-card-SOLUSDT').click();
+
+    const panel = page.getByTestId('drilldown-panel-SOLUSDT');
+    await expect(panel).toBeVisible();
+
+    // SOL fixture fires zero evidences — every leaf must render inactive,
+    // not be omitted or crash the graph.
+    for (const ruleId of RULE_IDS) {
+      const node = panel.getByTestId(`graph-node-${ruleId}`);
+      await expect(node).toBeVisible();
+      await expect(node).toHaveAttribute('data-state', 'inactive');
+    }
+    await expect(panel.getByTestId('thesis-scores')).toBeVisible();
+
+    const narrative = page.getByTestId('narrative-panel');
+    await expect(narrative).toHaveAttribute('data-state', 'unavailable');
+    const unavailable = narrative.getByTestId('narrative-unavailable');
+    await expect(unavailable).toBeVisible();
+    await expect(unavailable).toContainText('no está disponible');
+  });
 });
 
 // ---------------------------------------------------------------------------
