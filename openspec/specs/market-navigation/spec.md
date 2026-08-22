@@ -73,18 +73,24 @@ This footer MUST NOT be duplicated per-page (one shared instance, inherited from
 
 ### Requirement: Per-market routing
 
-The system MUST expose `/dashboard/crypto` as the only market route hosting the real decision dashboard. Every other market MUST have its own route (`/dashboard/{market-slug}`) that renders a shared placeholder page. Bare `/dashboard` MUST NOT 404 and MUST land the user on the Inicio route (`/dashboard/inicio`). The root path `/` MUST also NOT 404 and MUST land the user on the same Inicio route.
-(Previously: bare `/dashboard` MUST NOT 404 and MUST land the user on a working crypto view; the root path `/` was not addressed by this requirement's wording.)
+The system MUST expose one route per real market (`/dashboard/crypto` and `/dashboard/acciones`, matching `MARKETS.crypto.isReal` and `MARKETS.acciones.isReal` both being `true`) hosting that market's own real, market-scoped decision dashboard. Every remaining market MUST have its own route (`/dashboard/{market-slug}`) that renders a shared placeholder page. Bare `/dashboard` MUST NOT 404 and MUST land the user on the Inicio route (`/dashboard/inicio`). The root path `/` MUST also NOT 404 and MUST land the user on the same Inicio route.
+(Previously: `/dashboard/crypto` was the ONLY market route hosting the real decision dashboard; `MARKETS.acciones.isReal` was `false` and `/dashboard/acciones` rendered the shared placeholder.)
 
-#### Scenario: Crypto route hosts the real dashboard
+#### Scenario: Crypto route hosts its real dashboard
 - GIVEN the user navigates to `/dashboard/crypto`
 - WHEN the page loads
-- THEN the existing Tier 1 card overview MUST render with live data, unchanged in behavior
+- THEN the Tier 1 card overview MUST render with live crypto data, unchanged in behavior
 
-#### Scenario: Non-crypto market route renders the placeholder
-- GIVEN the user clicks "Acciones" in the sidebar
-- WHEN the route `/dashboard/acciones` (or its assigned slug) loads
-- THEN the shared placeholder page MUST render instead of any decision data
+#### Scenario: Acciones route hosts its own real dashboard
+- GIVEN the user navigates to `/dashboard/acciones`
+- WHEN the page loads
+- THEN the Tier 1 card overview MUST render with live acciones data
+- AND it MUST NOT render the shared placeholder page
+
+#### Scenario: Remaining non-real markets still render the placeholder
+- GIVEN the user clicks "Forex" in the sidebar
+- WHEN the route `/dashboard/forex` loads
+- THEN the shared placeholder page MUST render, unchanged by this proposal
 
 #### Scenario: Bare /dashboard never 404s
 - GIVEN a user has the current `/dashboard` URL bookmarked
