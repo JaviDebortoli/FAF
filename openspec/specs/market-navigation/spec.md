@@ -170,9 +170,10 @@ Every `/dashboard/*` view (crypto and every placeholder market) MUST render the 
 
 Every `/dashboard/*` view MUST render this exact disclaimer paragraph, verbatim and byte-for-byte identical across all views, regardless of whether the view currently shows recommendation cards:
 
-> Cada tarjeta muestra una recomendación BUY/SELL derivada de forma determinística por el framework argumentativo. Esta vista no contiene texto generado por IA.
+> Cada tarjeta muestra una recomendación Compra/Venta/Sin recomendación derivada de forma determinística por el framework argumentativo. Esta vista no contiene texto generado por IA.
 
 This requirement applies uniformly to the crypto view and to every placeholder-market view; the wording MUST NOT be adapted or reworded per market.
+(Previously: pinned copy read "recomendación BUY/SELL" — the direction terms were untranslated English.)
 
 #### Scenario: Crypto view shows the disclaimer
 

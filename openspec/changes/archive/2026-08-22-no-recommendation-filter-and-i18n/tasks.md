@@ -68,9 +68,18 @@ Chain strategy: stacked-to-main
 
 ## Phase 5: Final Verification (after all 4 PRs merged)
 
-- [ ] 5.1 Run full suite: `npx vitest run` + `npx tsc --noEmit` + `npx playwright test` — all green, zero regressions across the 4-PR stack.
-- [ ] 5.2 Confirm `src/domain/types.ts`, `src/decision/policy.ts`, `app/api/*`, `tests/golden/*` have zero diff vs. pre-PR1 baseline (D3 — `git diff <base> --stat` across those paths, empty output).
-- [ ] 5.3 Self-check spec scenarios: `decision-dashboard` (Card overview, Tier 2 drill-down, Multi-asset display), `market-navigation` (DirectionFilter wiring, Determinism disclaimer), `decision-narrative` (Spanish-language output) each map to a passing test from Phases 1-4.
+- [x] 5.1 Run full suite: `npx vitest run` + `npx tsc --noEmit` + `npx playwright test` — all green, zero regressions across the 4-PR stack.
+- [x] 5.2 Confirm `src/domain/types.ts`, `src/decision/policy.ts`, `app/api/*`, `tests/golden/*` have zero diff vs. pre-PR1 baseline (D3 — `git diff <base> --stat` across those paths, empty output).
+- [x] 5.3 Self-check spec scenarios: `decision-dashboard` (Card overview, Tier 2 drill-down, Multi-asset display), `market-navigation` (DirectionFilter wiring, Determinism disclaimer), `decision-narrative` (Spanish-language output) each map to a passing test from Phases 1-4.
+
+<!-- sdd-archive reconciliation: 5.1-5.3 were unchecked at apply time (apply-progress.md's Phase 4 batch stopped
+before Phase 5, per its own "not yet ready for sdd-verify" note). The independent re-verification pass
+(sdd-verify, evidence_revision sha256:0afb91520efbade90331d22970aed177a90fe7d4b0118b127baac5b6be777a09,
+2026-08-22 00:58:54) directly confirms all three: "Tasks complete | 32 (Phases 1-5, including 5.1-5.3
+previously open, now satisfied; 5.3 gap is closed by a1217c0)", a fresh independent full-suite run
+(tsc 0 errors, vitest 239/239, playwright 52/52), a re-run D3 zero-diff self-check across all 5 commits,
+and a 17/17 spec-scenario compliance matrix covering every scenario named in 5.3. Checked off here at
+archive time per the Task Completion Gate's exceptional-reconciliation allowance, backed by that proof. -->
 
 ## Delivery Route Recommendation
 
