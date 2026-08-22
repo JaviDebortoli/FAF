@@ -1,3 +1,4 @@
+import { translateDirection } from '../lib/i18n';
 import type { Direction } from '../lib/select';
 
 interface EmptyStateProps {
@@ -20,8 +21,11 @@ interface EmptyStateProps {
  */
 export function EmptyState({ variant, direction }: EmptyStateProps) {
   const isFiltered = variant === 'filtered';
-  const headline = isFiltered ? `Sin resultados para ${direction}` : 'Sin recomendaciones activas en este momento';
-  const status = isFiltered ? `0 COINCIDENCIAS · ${direction}` : '0 ACTIVAS';
+  const translatedDirection = direction ? translateDirection(direction) : undefined;
+  const headline = isFiltered
+    ? `Sin resultados para ${translatedDirection}`
+    : 'Sin recomendaciones activas en este momento';
+  const status = isFiltered ? `0 COINCIDENCIAS · ${translatedDirection}` : '0 ACTIVAS';
 
   return (
     <div

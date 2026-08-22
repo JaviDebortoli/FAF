@@ -1,5 +1,6 @@
 'use client';
 
+import { translateDirection } from '../lib/i18n';
 import type { Direction } from '../lib/select';
 
 interface DirectionFilterProps {
@@ -7,10 +8,12 @@ interface DirectionFilterProps {
   onChange: (value: Direction) => void;
 }
 
-/** design.md "Tier 1 selection rule": ALL/BUY/SELL only — `NO_RECOMMENDATION`
- * never produces a filterable option. Marked `'use client'` per the design's
- * component diagram, which lists this node explicitly as "(client)". */
-const OPTIONS: Direction[] = ['ALL', 'BUY', 'SELL'];
+/** design.md "DirectionFilter.tsx": `OPTIONS` covers all four filterable
+ * states (no-recommendation-filter-and-i18n D1 reversal) — `NO_RECOMMENDATION`
+ * is now a real filterable option, not excluded. Marked `'use client'` per
+ * the design's component diagram, which lists this node explicitly as
+ * "(client)". */
+const OPTIONS: Direction[] = ['ALL', 'BUY', 'SELL', 'NO_RECOMMENDATION'];
 
 export function DirectionFilter({ value, onChange }: DirectionFilterProps) {
   return (
@@ -34,7 +37,7 @@ export function DirectionFilter({ value, onChange }: DirectionFilterProps) {
               (i > 0 ? ' border-l border-zinc-800' : '')
             }
           >
-            {option}
+            {translateDirection(option)}
           </button>
         );
       })}

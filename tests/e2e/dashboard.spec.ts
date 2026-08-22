@@ -314,8 +314,10 @@ test.describe('Tier 1 — card grid', () => {
     await expect(btcCard).toBeVisible();
     await expect(ethCard).toBeVisible();
     await expect(solCard).toBeVisible();
-    await expect(btcCard).toContainText('BUY');
-    await expect(ethCard).toContainText('SELL');
+    // Phase 2 (task 2.3) translates the badge label to Spanish — the
+    // remaining English-comment/test-title sweep is Phase 4 (task 4.5).
+    await expect(btcCard).toContainText('Compra');
+    await expect(ethCard).toContainText('Venta');
 
     // D2 regression guard: the SOLUSDT (NO_RECOMMENDATION) card must not be
     // mislabeled as SELL — this is the coercion bug the same change fixes.
@@ -363,7 +365,8 @@ test.describe('Direct /dashboard/crypto visit', () => {
     await page.goto('/dashboard/crypto');
 
     await expect(page.getByTestId('decision-card-BTCUSDT')).toBeVisible();
-    await expect(page.getByTestId('decision-card-BTCUSDT')).toContainText('BUY');
+    // Phase 2 (task 2.3) translates the badge label to Spanish.
+    await expect(page.getByTestId('decision-card-BTCUSDT')).toContainText('Compra');
   });
 });
 
@@ -450,7 +453,8 @@ test.describe('Tier 1 — direction filter', () => {
     const btcCard = page.getByTestId('decision-card-BTCUSDT');
     const ethCard = page.getByTestId('decision-card-ETHUSDT');
 
-    // ALL (default): both actionable cards visible.
+    // ALL (default): all three cards visible — BUY, SELL, and the muted
+    // NO_RECOMMENDATION card (no-recommendation-filter-and-i18n D1 reversal).
     await expect(btcCard).toBeVisible();
     await expect(ethCard).toBeVisible();
 
@@ -468,6 +472,25 @@ test.describe('Tier 1 — direction filter', () => {
     await page.getByTestId('direction-filter-ALL').click();
     await expect(btcCard).toBeVisible();
     await expect(ethCard).toBeVisible();
+  });
+
+  // Phase 2 (task 2.6) — the 4th tab: NO_RECOMMENDATION is now a real
+  // filterable direction, isolating only the muted card.
+  test('NO_RECOMMENDATION direction filter isolates only the muted card', async ({ page }) => {
+    await stubDecisions(page, MULTI_ASSET_REPORT);
+    await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
+
+    await page.goto('/dashboard/crypto');
+
+    const btcCard = page.getByTestId('decision-card-BTCUSDT');
+    const ethCard = page.getByTestId('decision-card-ETHUSDT');
+    const solCard = page.getByTestId('decision-card-SOLUSDT');
+
+    await page.getByTestId('direction-filter-NO_RECOMMENDATION').click();
+
+    await expect(solCard).toBeVisible();
+    await expect(btcCard).toHaveCount(0);
+    await expect(ethCard).toHaveCount(0);
   });
 
   test('shows the "filtered" empty state when a direction excludes every actionable card', async ({ page }) => {

@@ -42,14 +42,14 @@ Chain strategy: stacked-to-main
 
 ## Phase 2: i18n Utility + Spanish Component Text (PR2)
 
-- [ ] 2.1 RED `tests/dashboard/lib/i18n.test.ts` (new, thin): one assertion per `Record` key — `translateRecommendation('BUY'|'SELL'|'NO_RECOMMENDATION')`, `translateDirection('ALL'|...)`.
-- [ ] 2.2 GREEN `app/(dashboard)/lib/i18n.ts` (new): `RECOMMENDATION_ES`/`DIRECTION_ES` `Record` constants + `translateRecommendation`/`translateDirection`, per design.md's exact interfaces (Compra/Venta/Sin recomendación/Todos).
-- [ ] 2.3 GREEN `app/(dashboard)/components/RecommendationBadge.tsx`: swap the raw-literal label to `translateRecommendation(recommendation)` (all 3 branches, not just `inactive`).
-- [ ] 2.4 GREEN `app/(dashboard)/components/EmptyState.tsx`: swap `direction` interpolation to `translateDirection(direction)` in both headline and status copy.
-- [ ] 2.5 GREEN `app/(dashboard)/components/DirectionFilter.tsx`: `OPTIONS` becomes `['ALL','BUY','SELL','NO_RECOMMENDATION']`; button label `translateDirection(option)`; `data-testid` keeps the raw English enum value (`direction-filter-NO_RECOMMENDATION`) as the stable identifier.
-- [ ] 2.6 RED+GREEN `tests/e2e/dashboard.spec.ts`: add a 4th-tab scenario — clicking `direction-filter-NO_RECOMMENDATION` isolates only the muted card; update the `'ALL'` comment (now 3 assets, not 2).
-- [ ] 2.7 RED+GREEN `tests/e2e/market-nav.spec.ts`: add `'Sin recomendación filter isolates muted cards'` scenario per `specs/market-navigation/spec.md`, asserting `aria-pressed` on the 4th control.
-- [ ] 2.8 Verify GREEN: `npx vitest run tests/dashboard/lib/i18n.test.ts` + `npx playwright test tests/e2e/dashboard.spec.ts tests/e2e/market-nav.spec.ts -g "recomendaci"` + `npx tsc --noEmit`.
+- [x] 2.1 RED `tests/dashboard/lib/i18n.test.ts` (new, thin): one assertion per `Record` key — `translateRecommendation('BUY'|'SELL'|'NO_RECOMMENDATION')`, `translateDirection('ALL'|...)`.
+- [x] 2.2 GREEN `app/(dashboard)/lib/i18n.ts` (new): `RECOMMENDATION_ES`/`DIRECTION_ES` `Record` constants + `translateRecommendation`/`translateDirection`, per design.md's exact interfaces (Compra/Venta/Sin recomendación/Todos).
+- [x] 2.3 GREEN `app/(dashboard)/components/RecommendationBadge.tsx`: swap the raw-literal label to `translateRecommendation(recommendation)` (all 3 branches, not just `inactive`).
+- [x] 2.4 GREEN `app/(dashboard)/components/EmptyState.tsx`: swap `direction` interpolation to `translateDirection(direction)` in both headline and status copy.
+- [x] 2.5 GREEN `app/(dashboard)/components/DirectionFilter.tsx`: `OPTIONS` becomes `['ALL','BUY','SELL','NO_RECOMMENDATION']`; button label `translateDirection(option)`; `data-testid` keeps the raw English enum value (`direction-filter-NO_RECOMMENDATION`) as the stable identifier.
+- [x] 2.6 RED+GREEN `tests/e2e/dashboard.spec.ts`: add a 4th-tab scenario — clicking `direction-filter-NO_RECOMMENDATION` isolates only the muted card; update the `'ALL'` comment (now 3 assets, not 2).
+- [x] 2.7 RED+GREEN `tests/e2e/market-nav.spec.ts`: add `'Sin recomendación filter isolates muted cards'` scenario per `specs/market-navigation/spec.md`, asserting `aria-pressed` on the 4th control.
+- [x] 2.8 Verify GREEN: `npx vitest run tests/dashboard/lib/i18n.test.ts` + `npx playwright test tests/e2e/dashboard.spec.ts tests/e2e/market-nav.spec.ts -g "recomendaci"` + `npx tsc --noEmit`.
 
 ## Phase 3: Narrative Prompt Anti-English-Token Rule (PR3)
 

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import type { DecisionReport } from '../../src/domain/types';
+import type { Decision, DecisionReport, ThesisState } from '../../src/domain/types';
 
 /**
  * `market-nav-redesign` — new e2e suite for the multi-market navigation
@@ -20,6 +20,42 @@ const EMPTY_REPORT: DecisionReport = {
   cycleId: 'cycle_e2e_market_nav',
   computedAt: T,
   decisions: [],
+};
+
+/** Phase 2 (task 2.7) — minimal fixtures for the DirectionFilter's 4th tab,
+ * per specs/market-navigation/spec.md's "DirectionFilter wiring unchanged by
+ * the navigation redesign" requirement. No candle/evidence detail needed —
+ * this suite only exercises the filter's own wiring, not the card/graph
+ * rendering already covered by `tests/e2e/dashboard.spec.ts`. */
+const EMPTY_THESIS: ThesisState = {
+  thesis: 'bullish',
+  supporters: [],
+  aggregated: { gamma: 0, rho: 0 },
+  net: { gamma: 0, rho: 0 },
+  score: 0,
+};
+
+function directionFixture(asset: string, recommendation: Decision['recommendation']): Decision {
+  return {
+    asset,
+    t: T,
+    recommendation,
+    bullish: EMPTY_THESIS,
+    bearish: EMPTY_THESIS,
+    gap: 0,
+    thresholds: { theta: 0.67, delta: 0.2 },
+    trace: { candles: [], turtle: '', evidences: [] },
+  };
+}
+
+const DIRECTION_FILTER_REPORT: DecisionReport = {
+  cycleId: 'cycle_e2e_direction_filter',
+  computedAt: T,
+  decisions: [
+    directionFixture('BTCUSDT', 'BUY'),
+    directionFixture('ETHUSDT', 'SELL'),
+    directionFixture('SOLUSDT', 'NO_RECOMMENDATION'),
+  ],
 };
 
 async function stubDecisions(page: Page, report: DecisionReport) {
@@ -234,6 +270,41 @@ test.describe('Dashboard header — eyebrow & disclaimer', () => {
     await expect(page.locator('main')).toContainText(
       'Cada tarjeta muestra una recomendación BUY/SELL derivada de forma determinística por el framework argumentativo. Esta vista no contiene texto generado por IA.',
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// no-recommendation-filter-and-i18n Phase 2 (task 2.7) —
+// specs/market-navigation/spec.md "DirectionFilter wiring unchanged by the
+// navigation redesign": the 4th "Sin recomendación" control isolates only
+// NO_RECOMMENDATION (muted) cards, with correct `aria-pressed` state.
+// ---------------------------------------------------------------------------
+
+test.describe('DirectionFilter wiring', () => {
+  test('Sin recomendación filter isolates muted cards', async ({ page }) => {
+    await stubDecisions(page, DIRECTION_FILTER_REPORT);
+    await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
+
+    await page.goto('/dashboard/crypto');
+
+    const btcCard = page.getByTestId('decision-card-BTCUSDT');
+    const ethCard = page.getByTestId('decision-card-ETHUSDT');
+    const solCard = page.getByTestId('decision-card-SOLUSDT');
+    await expect(btcCard).toBeVisible();
+    await expect(ethCard).toBeVisible();
+    await expect(solCard).toBeVisible();
+
+    const noRecommendationControl = page.getByTestId('direction-filter-NO_RECOMMENDATION');
+    await noRecommendationControl.click();
+
+    await expect(solCard).toBeVisible();
+    await expect(btcCard).toHaveCount(0);
+    await expect(ethCard).toHaveCount(0);
+
+    await expect(noRecommendationControl).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('direction-filter-ALL')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByTestId('direction-filter-BUY')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByTestId('direction-filter-SELL')).toHaveAttribute('aria-pressed', 'false');
   });
 });
 
