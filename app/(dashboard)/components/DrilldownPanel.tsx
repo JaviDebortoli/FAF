@@ -68,7 +68,7 @@ export function DrilldownPanel({ decision, onClose }: DrilldownPanelProps) {
 
         <ArgumentGraph decision={decision} />
         <ThesisScores decision={decision} />
-        <NarrativePanel asset={decision.asset} />
+        <NarrativePanel asset={decision.asset} market={decision.market} />
       </div>
     </div>
   );

@@ -230,9 +230,15 @@ async function stubDecisionsUnavailable(page: import('@playwright/test').Page) {
  * real route's contract exactly (`NarrativePanel.tsx` reads
  * `response.body?.getReader()` on 200s): `text/plain` body, 200 status. The
  * browser always exposes a `ReadableStream` for `response.body` regardless
- * of whether Playwright delivered the body in one chunk. */
+ * of whether Playwright delivered the body in one chunk.
+ *
+ * narrative-market-param-regression — `NarrativePanel.tsx` now appends
+ * `?market=` to the fetch URL (the real route requires it, D-E), so the glob
+ * must match the query string too, mirroring `stubDecisions`'s
+ * `'**\/api/decisions?**'` fix above: a bare `'**\/narrative'` (no trailing
+ * wildcard) stops matching once the request URL carries a query string. */
 async function stubNarrativeSuccess(page: import('@playwright/test').Page, text: string) {
-  await page.route('**/api/decisions/*/narrative', async (route) => {
+  await page.route('**/api/decisions/*/narrative?**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'text/plain; charset=utf-8',
@@ -244,9 +250,10 @@ async function stubNarrativeSuccess(page: import('@playwright/test').Page, text:
 
 /** Failure stub matching the real route's `jsonError()` shape exactly:
  * `Response.json({ error, code }, { status })` — `NarrativePanel.tsx` does
- * `response.json()` on non-2xx and reads `body.code`. */
+ * `response.json()` on non-2xx and reads `body.code`. Query-tolerant glob,
+ * same reason as `stubNarrativeSuccess` above. */
 async function stubNarrativeError(page: import('@playwright/test').Page, status: number, code: string) {
-  await page.route('**/api/decisions/*/narrative', async (route) => {
+  await page.route('**/api/decisions/*/narrative?**', async (route) => {
     await route.fulfill({
       status,
       contentType: 'application/json',
@@ -652,7 +659,10 @@ test.describe('Tier 2 — lazy narrative fetch', () => {
     await stubDecisions(page, MULTI_ASSET_REPORT);
 
     let narrativeRequestCount = 0;
-    await page.route('**/api/decisions/*/narrative', async (route) => {
+    // narrative-market-param-regression — query-tolerant glob, same reason
+    // as stubNarrativeSuccess/stubNarrativeError above: this inline stub
+    // predates those helpers and has the identical bug.
+    await page.route('**/api/decisions/*/narrative?**', async (route) => {
       narrativeRequestCount += 1;
       await route.fulfill({
         status: 200,
@@ -705,6 +715,44 @@ test.describe('Tier 2 — narrative disclaimer', () => {
     const disclaimer = panel.getByTestId('narrative-ai-disclaimer');
     await expect(disclaimer).toBeVisible();
     await expect(disclaimer).toContainText('Generado por IA');
+  });
+
+  // -------------------------------------------------------------------------
+  // narrative-market-param-regression (RED) — proves NarrativePanel actually
+  // sends the `market` query param the real route requires
+  // (app/api/decisions/[asset]/narrative/route.ts:189-192: missing/invalid
+  // `market` 400s with `BAD_MARKET` before any other validation). The stub
+  // below mirrors that exact contract instead of unconditionally succeeding,
+  // so it fails against the unfixed `NarrativePanel.tsx`/`DrilldownPanel.tsx`
+  // (no `market` ever sent) for the SAME reason production requests do: the
+  // panel gets stuck instead of reaching `data-state="done"`.
+  // -------------------------------------------------------------------------
+  test('sends the market query param required by the real narrative route contract', async ({ page }) => {
+    await stubDecisions(page, MULTI_ASSET_REPORT);
+    await page.route('**/api/decisions/*/narrative?**', async (route) => {
+      const market = new URL(route.request().url()).searchParams.get('market');
+      if (market !== 'crypto' && market !== 'acciones') {
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: '"market" query param must be "crypto" or "acciones"', code: 'BAD_MARKET' }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/plain; charset=utf-8',
+        headers: { 'x-faf-narrative-source': 'llm' },
+        body: `Narrativa para mercado ${market}.`,
+      });
+    });
+
+    await page.goto('/dashboard/crypto');
+    await page.getByTestId('decision-card-BTCUSDT').click();
+
+    const panel = page.getByTestId('narrative-panel');
+    await expect(panel).toHaveAttribute('data-state', 'done');
+    await expect(panel.getByTestId('narrative-text')).toContainText('Narrativa para mercado crypto.');
   });
 });
 

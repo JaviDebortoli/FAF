@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { Market } from '@/src/domain/types';
 
 type NarrativeState = 'idle' | 'loading' | 'streaming' | 'done' | 'unavailable' | 'failed';
 
 interface NarrativePanelProps {
   asset: string;
+  market: Market;
 }
 
 const INCOMPLETE_MARKER = '\n\n[NARRATIVE_INCOMPLETE]';
@@ -17,7 +19,7 @@ const INCOMPLETE_MARKER = '\n\n[NARRATIVE_INCOMPLETE]';
  * only actionable assets ever get a drill-down, but are handled the same way
  * rather than surfaced as alarming errors.
  */
-const UNAVAILABLE_CODES = new Set(['BAD_ASSET', 'NO_DECISION', 'NOT_APPLICABLE', 'NARRATIVE_DISABLED']);
+const UNAVAILABLE_CODES = new Set(['BAD_ASSET', 'NO_DECISION', 'NOT_APPLICABLE', 'NARRATIVE_DISABLED', 'BAD_MARKET']);
 
 /**
  * design.md "Client state machine": idle -> loading -> streaming ->
@@ -32,7 +34,7 @@ const UNAVAILABLE_CODES = new Set(['BAD_ASSET', 'NO_DECISION', 'NOT_APPLICABLE',
  * without a second Claude call, so duplicating that cache on the client
  * would be a second source of truth for no benefit.
  */
-export function NarrativePanel({ asset }: NarrativePanelProps) {
+export function NarrativePanel({ asset, market }: NarrativePanelProps) {
   const [state, setState] = useState<NarrativeState>('idle');
   const [text, setText] = useState('');
   const [attempt, setAttempt] = useState(0);
@@ -46,7 +48,7 @@ export function NarrativePanel({ asset }: NarrativePanelProps) {
     async function run() {
       let response: Response;
       try {
-        response = await fetch(`/api/decisions/${asset}/narrative`);
+        response = await fetch(`/api/decisions/${asset}/narrative?market=${market}`);
       } catch {
         if (!cancelledRef.current) setState('failed');
         return;
@@ -107,7 +109,7 @@ export function NarrativePanel({ asset }: NarrativePanelProps) {
     return () => {
       cancelledRef.current = true;
     };
-  }, [asset, attempt]);
+  }, [asset, market, attempt]);
 
   return (
     <section
