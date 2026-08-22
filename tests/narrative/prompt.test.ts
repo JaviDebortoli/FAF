@@ -28,7 +28,8 @@ Reglas estrictas:
 - Nunca menciones objetivos de precio, retornos esperados, horizontes temporales, noticias ni eventos externos al framework: esa información no existe en los datos que recibes y no debes inventarla.
 - No emitas consejos de inversión más allá de restatear la etiqueta que el framework ya calculó (comprar/vender según sigma+/sigma- frente a theta y la brecha frente a delta).
 - Describe el resultado exclusivamente como "sigma+ frente a theta" y "la brecha (gap) frente a delta", calculados por el framework — nunca como una predicción, un pronóstico o una opinión propia.
-- Tu texto se mostrará siempre junto a un aviso visible de que fue generado por inteligencia artificial. No debes afirmar ni dar a entender que eres un analista humano.`;
+- Tu texto se mostrará siempre junto a un aviso visible de que fue generado por inteligencia artificial. No debes afirmar ni dar a entender que eres un analista humano.
+- Nunca uses las palabras en inglés "BUY", "SELL" ni "NO_RECOMMENDATION" en tu texto: usa siempre "comprar"/"vender", o "sin recomendación" cuando corresponda.`;
 
 const promptSourcePath = join(process.cwd(), 'src', 'narrative', 'prompt.ts');
 
@@ -64,6 +65,7 @@ describe('NARRATIVE_SYSTEM_PROMPT', () => {
     expect(NARRATIVE_SYSTEM_PROMPT).toContain('generado por inteligencia artificial');
     expect(NARRATIVE_SYSTEM_PROMPT).toContain('analista humano');
     expect(NARRATIVE_SYSTEM_PROMPT).toContain('supporters');
+    expect(NARRATIVE_SYSTEM_PROMPT).toContain('en inglés');
   });
 
   it('the source module has zero string interpolation ("${") anywhere — no injection surface by construction (T-4)', () => {

@@ -53,9 +53,9 @@ Chain strategy: stacked-to-main
 
 ## Phase 3: Narrative Prompt Anti-English-Token Rule (PR3)
 
-- [ ] 3.1 RED `tests/narrative/prompt.test.ts`: add `expect(NARRATIVE_SYSTEM_PROMPT).toContain('en inglés')` and update `GOLDEN_SYSTEM_PROMPT` with the new bullet (confirm the equality assertion fails against unmodified `prompt.ts`).
-- [ ] 3.2 GREEN `src/narrative/prompt.ts`: append `- Nunca uses las palabras en inglés "BUY", "SELL" ni "NO_RECOMMENDATION" en tu texto: usa siempre "comprar"/"vender", o "sin recomendación" cuando corresponda.` to `Reglas estrictas:`, verbatim, same dash-prefix style as the other 6 rules. Land 3.1+3.2 in the same commit — a split leaves a broken byte-equality window (design.md).
-- [ ] 3.3 Verify GREEN: `npx vitest run tests/narrative/prompt.test.ts`.
+- [x] 3.1 RED `tests/narrative/prompt.test.ts`: add `expect(NARRATIVE_SYSTEM_PROMPT).toContain('en inglés')` and update `GOLDEN_SYSTEM_PROMPT` with the new bullet (confirm the equality assertion fails against unmodified `prompt.ts`).
+- [x] 3.2 GREEN `src/narrative/prompt.ts`: append `- Nunca uses las palabras en inglés "BUY", "SELL" ni "NO_RECOMMENDATION" en tu texto: usa siempre "comprar"/"vender", o "sin recomendación" cuando corresponda.` to `Reglas estrictas:`, verbatim, same dash-prefix style as the other 6 rules. Land 3.1+3.2 in the same commit — a split leaves a broken byte-equality window (design.md).
+- [x] 3.3 Verify GREEN: `npx vitest run tests/narrative/prompt.test.ts`.
 
 ## Phase 4: Remaining Spanish Prose + e2e Text Sweep (PR4)
 

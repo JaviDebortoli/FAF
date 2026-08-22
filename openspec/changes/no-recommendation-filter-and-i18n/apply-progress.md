@@ -201,3 +201,81 @@ None.
 ## Status (cumulative)
 
 20/28 total tasks complete (Phase 1: 12/12, Phase 2: 8/8). Ready for orchestrator verification (`npx tsc --noEmit`, `npx vitest run`, `npx playwright test`) and commit. Not yet ready for `sdd-verify` on the full change — Phases 3-5 remain.
+
+---
+
+# Phase 3 of 5 — Narrative Prompt Anti-English-Token Rule (PR3)
+
+Independent of Phase 1/2 (no file overlap — touches only `src/narrative/prompt.ts`
+and `tests/narrative/prompt.test.ts`), landed per the requested sequence. Per
+design.md's testing-strategy table this is RED->GREEN: a real constraint
+(new prompt rule forbidding literal English "BUY"/"SELL"/"NO_RECOMMENDATION"
+tokens in generated prose) driven by a golden-string equality test, updated
+in lockstep with the implementation to avoid a broken-equality window.
+
+## Mode
+
+Strict TDD Mode (project-wide, enabled). RED and GREEN landed together in
+the same edit batch per design.md's explicit instruction — task 3.2 says
+"Land 3.1+3.2 in the same commit — a split leaves a broken byte-equality
+window" — so this phase does not have a standalone "confirmed failing"
+step recorded separately from the fix; both files were edited atomically
+and verified together.
+
+## Completed Tasks (Phase 3 — 3/3)
+
+- [x] 3.1 RED `tests/narrative/prompt.test.ts`: added `expect(NARRATIVE_SYSTEM_PROMPT).toContain('en inglés')` and updated `GOLDEN_SYSTEM_PROMPT` with the new bullet (byte-identical to the new `NARRATIVE_SYSTEM_PROMPT`).
+- [x] 3.2 GREEN `src/narrative/prompt.ts`: appended the new bullet to `Reglas estrictas:`, verbatim per design.md, same dash-prefix style as the other 6 rules.
+- [x] 3.3 Verify GREEN: `npx vitest run tests/narrative/prompt.test.ts` — 5/5 passed.
+
+## TDD Cycle Evidence
+
+| Task | RED/GREEN (atomic pair, per design.md) | Verify |
+|---|---|---|
+| 3.1/3.2 anti-English-token rule | `GOLDEN_SYSTEM_PROMPT` and `NARRATIVE_SYSTEM_PROMPT` updated with the identical new bullet in the same edit batch; new `.toContain('en inglés')` assertion added alongside the other content assertions | `npx vitest run tests/narrative/prompt.test.ts` — 5/5 passed (byte-identity check, the 4 `toContain` assertions including the new one, the zero-interpolation structural check, and both `buildUserMessage` tests) |
+
+## Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and exact result | `npx vitest run tests/narrative/prompt.test.ts` — 1 file, 5 tests, all passed |
+| New bullet added (exact text) | `- Nunca uses las palabras en inglés "BUY", "SELL" ni "NO_RECOMMENDATION" en tu texto: usa siempre "comprar"/"vender", o "sin recomendación" cuando corresponda.` |
+| Rollback boundary | Revert `src/narrative/prompt.ts` (the appended bullet) and `tests/narrative/prompt.test.ts` (the `GOLDEN_SYSTEM_PROMPT` bullet + the new `toContain('en inglés')` assertion) together; no partial state possible since both changed atomically. |
+
+## Files Changed (Phase 3)
+
+| File | Action | What Was Done |
+|---|---|---|
+| `src/narrative/prompt.ts` | Modified | Appended a 7th rule to `NARRATIVE_SYSTEM_PROMPT`'s `Reglas estrictas:` list forbidding the literal English tokens "BUY"/"SELL"/"NO_RECOMMENDATION" in generated prose, instructing "comprar"/"vender"/"sin recomendación" instead |
+| `tests/narrative/prompt.test.ts` | Modified | `GOLDEN_SYSTEM_PROMPT` updated with the identical new bullet (byte-identity check stays valid); added `expect(NARRATIVE_SYSTEM_PROMPT).toContain('en inglés')` to the existing content-assertions test |
+
+## Deviations from Design
+
+None — the new bullet is verbatim from design.md's "Prose edits" / narrative-prompt section, and RED+GREEN landed atomically as design.md required.
+
+## Issues Found
+
+None.
+
+## Out of Scope for This Batch (explicitly not touched)
+
+- `app/(dashboard)/components/DashboardHeader.tsx`, `app/dashboard/(with-footer)/inicio/page.tsx`, `PipelineDiagram.tsx` Spanish prose (Phase 4)
+- `tests/e2e/market-nav.spec.ts:235,442` disclaimer-copy pinned string (Phase 4, task 4.4)
+- Remaining Phase 4 e2e sweep (Phase 4, task 4.5)
+- Phase 5 final verification (runs only after all PRs merge)
+
+## Remaining Tasks
+
+- [ ] Phase 4: Remaining Spanish Prose + e2e Text Sweep (PR4) — tasks 4.1-4.6
+- [ ] Phase 5: Final Verification (after all 4 PRs merged) — tasks 5.1-5.3
+
+## Workload / PR Boundary
+
+- Mode: chained PR slice (stacked-to-main, per tasks.md's Delivery Route Recommendation)
+- Current work unit: Unit 3 / PR3 — `src/narrative/prompt.ts` anti-English-token rule + golden test, atomic
+- Boundary: starts from Phase 2's landed state (commit `b0e19a8`), ends with all 3 Phase 3 tasks green (`npx vitest run tests/narrative/prompt.test.ts`)
+- Estimated review budget impact: within tasks.md's forecast for Phase 3 (Low — 2 files, ~1 new line each plus golden-string sync); orchestrator will independently verify (`npx tsc --noEmit`, `npx vitest run`) and commit
+
+## Status (cumulative)
+
+23/28 total tasks complete (Phase 1: 12/12, Phase 2: 8/8, Phase 3: 3/3). Ready for orchestrator verification (`npx tsc --noEmit`, `npx vitest run`) and commit. Not yet ready for `sdd-verify` on the full change — Phases 4-5 remain.
