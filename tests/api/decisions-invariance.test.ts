@@ -22,18 +22,22 @@ afterEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
 });
 
+function makeGetRequest(market = 'crypto'): Request {
+  return new Request(`http://x/api/decisions?market=${market}`);
+}
+
 describe('GET /api/decisions — D7 clause 4 invariance', () => {
   it('cache-miss (503) path is byte-identical whether or not ANTHROPIC_API_KEY is set', async () => {
     const { GET } = await import('@/app/api/decisions/route');
 
     delete process.env.ANTHROPIC_API_KEY;
     cache.clear();
-    const withoutKeyResponse = await GET();
+    const withoutKeyResponse = await GET(makeGetRequest());
     const withoutKeyBody = await withoutKeyResponse.text();
 
     process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
     cache.clear();
-    const withKeyResponse = await GET();
+    const withKeyResponse = await GET(makeGetRequest());
     const withKeyBody = await withKeyResponse.text();
 
     expect(withoutKeyResponse.status).toBe(503);
@@ -47,13 +51,13 @@ describe('GET /api/decisions — D7 clause 4 invariance', () => {
 
     delete process.env.ANTHROPIC_API_KEY;
     cache.clear();
-    seedCycleCache(report);
-    const withoutKeyBody = await (await GET()).text();
+    seedCycleCache(report, 'crypto');
+    const withoutKeyBody = await (await GET(makeGetRequest())).text();
 
     process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
     cache.clear();
-    seedCycleCache(report);
-    const withKeyBody = await (await GET()).text();
+    seedCycleCache(report, 'crypto');
+    const withKeyBody = await (await GET(makeGetRequest())).text();
 
     expect(withKeyBody).toBe(withoutKeyBody);
   });

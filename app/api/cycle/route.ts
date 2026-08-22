@@ -1,4 +1,4 @@
-import type { Candle } from '@/src/domain/types';
+import type { Candle, Market } from '@/src/domain/types';
 import { isWellFormedAsset } from '@/src/market/assets';
 import { runCycle } from '@/src/cycle/runCycle';
 import type { AssetKlines } from '@/src/cycle/runCycle';
@@ -49,16 +49,29 @@ function isValidCandle(v: unknown): v is Candle {
 
 type ParsedCyclePayload = { ok: true; assets: AssetKlines[] } | { ok: false; error: string };
 
+const VALID_MARKETS: readonly Market[] = ['crypto', 'acciones'];
+
+function isMarket(value: unknown): value is Market {
+  return typeof value === 'string' && (VALID_MARKETS as readonly string[]).includes(value);
+}
+
 /**
  * T-1: validates the pushed-klines payload shape and rejects any symbol
- * that fails the format regex (`isWellFormedAsset`), before any downstream
- * processing. No enumerated allowlist gates acceptance (dynamic-asset-count).
+ * that fails the format regex for its declared `market` (`isWellFormedAsset`,
+ * design.md D-C), before any downstream processing. No enumerated allowlist
+ * gates acceptance (dynamic-asset-count). `market` is validated first — one
+ * push = one market (design.md D-A) — then attached onto every `AssetKlines`
+ * item built from this payload.
  */
 function parseCyclePayload(body: unknown): ParsedCyclePayload {
   if (typeof body !== 'object' || body === null) {
     return { ok: false, error: 'Payload must be a JSON object' };
   }
   const raw = body as Record<string, unknown>;
+  if (!isMarket(raw.market)) {
+    return { ok: false, error: '"market" must be "crypto" or "acciones"' };
+  }
+  const market = raw.market;
   if (!Array.isArray(raw.assets)) {
     return { ok: false, error: '"assets" must be an array' };
   }
@@ -72,7 +85,7 @@ function parseCyclePayload(body: unknown): ParsedCyclePayload {
       return { ok: false, error: 'Each assets[] entry must be an object' };
     }
     const { symbol, klines } = rawEntry as Record<string, unknown>;
-    if (typeof symbol !== 'string' || !isWellFormedAsset(symbol)) {
+    if (typeof symbol !== 'string' || !isWellFormedAsset(market, symbol)) {
       return { ok: false, error: 'Malformed symbol' };
     }
     if (!Array.isArray(klines) || klines.length > MAX_KLINES_PER_ASSET) {
@@ -84,7 +97,7 @@ function parseCyclePayload(body: unknown): ParsedCyclePayload {
     if (!klines.every(isValidCandle)) {
       return { ok: false, error: `"klines" for ${symbol} contains malformed candle entries` };
     }
-    assets.push({ asset: symbol, candles: klines });
+    assets.push({ asset: symbol, market, candles: klines });
   }
 
   return { ok: true, assets };
@@ -128,6 +141,6 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const report = runCycle(parsed.assets);
-  cache.put(report, BETA_MS);
+  cache.put(report.market, report, BETA_MS);
   return Response.json(report, { status: 200 });
 }

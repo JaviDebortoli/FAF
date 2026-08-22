@@ -39,15 +39,15 @@ Chain strategy: stacked-to-main
 
 ## Phase B: `POST /api/cycle` Market Discriminator + `GET /api/decisions` Market Scoping (PR2)
 
-- [ ] B.1 `src/market/assets.ts`: add `export const ACCIONES_SYMBOL_PATTERN = /^[A-Z]{1,5}(\.[A-Z])?$/;`; change `isWellFormedAsset` signature to `(market: Market, asset: string): boolean`, dispatching to `ASSET_SYMBOL_PATTERN` (crypto) or `ACCIONES_SYMBOL_PATTERN` (acciones).
-- [ ] B.2 GREEN `src/market/binance.ts:40`: update the lone call site to `isWellFormedAsset('crypto', asset)`.
-- [ ] B.3 RED `tests/market/assets.test.ts`: update every existing `isWellFormedAsset(...)` call to pass `'crypto'` as the first arg; add the acciones truth table from the spec delta — `AAPL` accepted, `BRK.B` accepted, `''`/`aapl`/`AAAAAA`/`AAP1`/`BRK.BB`/`BRK.`/`BRK.1` rejected.
-- [ ] B.4 GREEN: confirm B.1-B.2 make B.3 pass.
-- [ ] B.5 RED `tests/api/cycle.test.ts`: update every payload literal to include a top-level `market: 'crypto'` field; add scenarios — well-formed acciones symbol accepted, unknown `market` value (`'forex'`) rejected with 400, `MAX_ASSETS=25` enforced independently per market (26 acciones symbols rejected regardless of a separate crypto count).
-- [ ] B.6 GREEN `app/api/cycle/route.ts`: `parseCyclePayload` validates `market` is `'crypto' | 'acciones'` first (400 otherwise), passes `market` into `isWellFormedAsset(market, symbol)` and attaches `market` onto each built `AssetKlines`; `cache.put(market, report, BETA_MS)`.
-- [ ] B.7 RED `tests/api/decisions.test.ts` + `tests/api/decisions-invariance.test.ts`: update every `GET()` call to `GET(new Request('http://x/api/decisions?market=crypto'))`; add scenarios — missing `market` param 400, invalid `market` value 400, acciones-scoped read never returns a crypto decision.
-- [ ] B.8 GREEN `app/api/decisions/route.ts`: `GET(request: Request)` parses `new URL(request.url).searchParams.get('market')`, 400s on missing/invalid, else `cache.get(market)`.
-- [ ] B.9 Verify GREEN: `npx vitest run tests/market/assets.test.ts tests/market/binance.test.ts tests/api/cycle.test.ts tests/api/decisions.test.ts tests/api/decisions-invariance.test.ts` + `npx tsc --noEmit`.
+- [x] B.1 `src/market/assets.ts`: add `export const ACCIONES_SYMBOL_PATTERN = /^[A-Z]{1,5}(\.[A-Z])?$/;`; change `isWellFormedAsset` signature to `(market: Market, asset: string): boolean`, dispatching to `ASSET_SYMBOL_PATTERN` (crypto) or `ACCIONES_SYMBOL_PATTERN` (acciones).
+- [x] B.2 GREEN `src/market/binance.ts:40`: update the lone call site to `isWellFormedAsset('crypto', asset)`.
+- [x] B.3 RED `tests/market/assets.test.ts`: update every existing `isWellFormedAsset(...)` call to pass `'crypto'` as the first arg; add the acciones truth table from the spec delta — `AAPL` accepted, `BRK.B` accepted, `''`/`aapl`/`AAAAAA`/`AAP1`/`BRK.BB`/`BRK.`/`BRK.1` rejected.
+- [x] B.4 GREEN: confirm B.1-B.2 make B.3 pass.
+- [x] B.5 RED `tests/api/cycle.test.ts`: update every payload literal to include a top-level `market: 'crypto'` field; add scenarios — well-formed acciones symbol accepted, unknown `market` value (`'forex'`) rejected with 400, `MAX_ASSETS=25` enforced independently per market (26 acciones symbols rejected regardless of a separate crypto count).
+- [x] B.6 GREEN `app/api/cycle/route.ts`: `parseCyclePayload` validates `market` is `'crypto' | 'acciones'` first (400 otherwise), passes `market` into `isWellFormedAsset(market, symbol)` and attaches `market` onto each built `AssetKlines`; `cache.put(market, report, BETA_MS)`.
+- [x] B.7 RED `tests/api/decisions.test.ts` + `tests/api/decisions-invariance.test.ts`: update every `GET()` call to `GET(new Request('http://x/api/decisions?market=crypto'))`; add scenarios — missing `market` param 400, invalid `market` value 400, acciones-scoped read never returns a crypto decision.
+- [x] B.8 GREEN `app/api/decisions/route.ts`: `GET(request: Request)` parses `new URL(request.url).searchParams.get('market')`, 400s on missing/invalid, else `cache.get(market)`.
+- [x] B.9 Verify GREEN: `npx vitest run tests/market/assets.test.ts tests/market/binance.test.ts tests/api/cycle.test.ts tests/api/decisions.test.ts tests/api/decisions-invariance.test.ts` + `npx tsc --noEmit`.
 
 ## Phase C: Narrative Route Market-Scoping (PR3)
 

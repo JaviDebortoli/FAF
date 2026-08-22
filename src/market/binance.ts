@@ -37,7 +37,10 @@ function parseKline(raw: unknown): Candle | null {
  */
 export class BinanceHttpSource implements MarketDataSource {
   async fetchCandles(asset: Asset): Promise<FetchResult | null> {
-    if (!isWellFormedAsset(asset)) {
+    // This adapter is crypto-only (design.md D-C "Callers touched") — acciones
+    // fetches go through Twelve Data directly from n8n (design.md D-G), never
+    // through this class.
+    if (!isWellFormedAsset('crypto', asset)) {
       return null;
     }
 

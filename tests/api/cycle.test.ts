@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const runCycleMock = vi.fn((..._args: unknown[]) => ({
   cycleId: 'cycle_test',
+  market: 'crypto',
   computedAt: 0,
   decisions: [],
 }));
@@ -61,7 +62,7 @@ describe('POST /api/cycle — T-1 payload validation', () => {
       volume: 1,
     }));
     const request = makeRequest(
-      { assets: [{ symbol: 'BTCUSDT', klines: hugeKlines }] },
+      { market: 'crypto', assets: [{ symbol: 'BTCUSDT', klines: hugeKlines }] },
       { [SHARED_SECRET_HEADER]: SECRET },
     );
 
@@ -74,7 +75,7 @@ describe('POST /api/cycle — T-1 payload validation', () => {
   it('rejects a malformed symbol (eth-usdt) with 400 and never calls runCycle', async () => {
     const { POST } = await import('@/app/api/cycle/route');
     const request = makeRequest(
-      { assets: [{ symbol: 'eth-usdt', klines: [] }] },
+      { market: 'crypto', assets: [{ symbol: 'eth-usdt', klines: [] }] },
       { [SHARED_SECRET_HEADER]: SECRET },
     );
 
@@ -87,7 +88,7 @@ describe('POST /api/cycle — T-1 payload validation', () => {
   it('rejects malformed candle entries within klines with 400 and never calls runCycle', async () => {
     const { POST } = await import('@/app/api/cycle/route');
     const request = makeRequest(
-      { assets: [{ symbol: 'BTCUSDT', klines: [{ openTime: 'not-a-number' }] }] },
+      { market: 'crypto', assets: [{ symbol: 'BTCUSDT', klines: [{ openTime: 'not-a-number' }] }] },
       { [SHARED_SECRET_HEADER]: SECRET },
     );
 
@@ -99,7 +100,7 @@ describe('POST /api/cycle — T-1 payload validation', () => {
 
   it('rejects a payload where "assets" is not an array with 400', async () => {
     const { POST } = await import('@/app/api/cycle/route');
-    const request = makeRequest({ assets: 'BTCUSDT' }, { [SHARED_SECRET_HEADER]: SECRET });
+    const request = makeRequest({ market: 'crypto', assets: 'BTCUSDT' }, { [SHARED_SECRET_HEADER]: SECRET });
 
     const response = await POST(request);
 
@@ -111,7 +112,7 @@ describe('POST /api/cycle — T-1 payload validation', () => {
 describe('POST /api/cycle — T-2 shared-secret auth', () => {
   it('rejects a request with no shared-secret header with 401 and never calls runCycle', async () => {
     const { POST } = await import('@/app/api/cycle/route');
-    const request = makeRequest({ assets: [{ symbol: 'BTCUSDT', klines: [] }] });
+    const request = makeRequest({ market: 'crypto', assets: [{ symbol: 'BTCUSDT', klines: [] }] });
 
     const response = await POST(request);
 
@@ -122,7 +123,7 @@ describe('POST /api/cycle — T-2 shared-secret auth', () => {
   it('rejects a request with a wrong shared-secret header with 403 and never calls runCycle', async () => {
     const { POST } = await import('@/app/api/cycle/route');
     const request = makeRequest(
-      { assets: [{ symbol: 'BTCUSDT', klines: [] }] },
+      { market: 'crypto', assets: [{ symbol: 'BTCUSDT', klines: [] }] },
       { [SHARED_SECRET_HEADER]: 'wrong-secret' },
     );
 
@@ -137,7 +138,7 @@ describe('POST /api/cycle — happy paths', () => {
   it('accepts a valid pushed-klines payload, calls runCycle once, and returns 200 with the report', async () => {
     const { POST } = await import('@/app/api/cycle/route');
     const request = makeRequest(
-      { assets: [{ symbol: 'BTCUSDT', klines: [] }] },
+      { market: 'crypto', assets: [{ symbol: 'BTCUSDT', klines: [] }] },
       { [SHARED_SECRET_HEADER]: SECRET },
     );
 
@@ -152,7 +153,7 @@ describe('POST /api/cycle — happy paths', () => {
   it('accepts a well-formed, previously-unseen symbol (ADAUSDT) and calls runCycle once — no enumerated list gates it', async () => {
     const { POST } = await import('@/app/api/cycle/route');
     const request = makeRequest(
-      { assets: [{ symbol: 'ADAUSDT', klines: [] }] },
+      { market: 'crypto', assets: [{ symbol: 'ADAUSDT', klines: [] }] },
       { [SHARED_SECRET_HEADER]: SECRET },
     );
 
@@ -162,6 +163,58 @@ describe('POST /api/cycle — happy paths', () => {
     expect(runCycleMock).toHaveBeenCalledTimes(1);
   });
 
+  it('accepts a well-formed acciones symbol (AAPL) and calls runCycle once', async () => {
+    const { POST } = await import('@/app/api/cycle/route');
+    const request = makeRequest(
+      { market: 'acciones', assets: [{ symbol: 'AAPL', klines: [] }] },
+      { [SHARED_SECRET_HEADER]: SECRET },
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(200);
+    expect(runCycleMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects an unknown market value ("forex") with 400 and never calls runCycle', async () => {
+    const { POST } = await import('@/app/api/cycle/route');
+    const request = makeRequest(
+      { market: 'forex', assets: [{ symbol: 'AAPL', klines: [] }] },
+      { [SHARED_SECRET_HEADER]: SECRET },
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    expect(runCycleMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a missing market field with 400 and never calls runCycle', async () => {
+    const { POST } = await import('@/app/api/cycle/route');
+    const request = makeRequest(
+      { assets: [{ symbol: 'BTCUSDT', klines: [] }] },
+      { [SHARED_SECRET_HEADER]: SECRET },
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    expect(runCycleMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects an acciones symbol that fails the acciones pattern (BTCUSDT-shaped) with 400', async () => {
+    const { POST } = await import('@/app/api/cycle/route');
+    const request = makeRequest(
+      { market: 'acciones', assets: [{ symbol: 'BTCUSDT', klines: [] }] },
+      { [SHARED_SECRET_HEADER]: SECRET },
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    expect(runCycleMock).not.toHaveBeenCalled();
+  });
+
   it('accepts a payload with exactly MAX_ASSETS (25) well-formed symbols', async () => {
     const { POST } = await import('@/app/api/cycle/route');
     const { MAX_ASSETS } = await import('@/src/cycle/constants');
@@ -169,7 +222,7 @@ describe('POST /api/cycle — happy paths', () => {
       symbol: `ASSET${i}USDT`,
       klines: [],
     }));
-    const request = makeRequest({ assets }, { [SHARED_SECRET_HEADER]: SECRET });
+    const request = makeRequest({ market: 'crypto', assets }, { [SHARED_SECRET_HEADER]: SECRET });
 
     const response = await POST(request);
 
@@ -184,7 +237,23 @@ describe('POST /api/cycle — happy paths', () => {
       symbol: `ASSET${i}USDT`,
       klines: [],
     }));
-    const request = makeRequest({ assets }, { [SHARED_SECRET_HEADER]: SECRET });
+    const request = makeRequest({ market: 'crypto', assets }, { [SHARED_SECRET_HEADER]: SECRET });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    expect(runCycleMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a payload with MAX_ASSETS + 1 (26) well-formed acciones symbols with 400 — the cap applies independently of market', async () => {
+    const { POST } = await import('@/app/api/cycle/route');
+    const { MAX_ASSETS } = await import('@/src/cycle/constants');
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const assets = Array.from({ length: MAX_ASSETS + 1 }, (_, i) => ({
+      symbol: letters.charAt(i % letters.length).repeat(3),
+      klines: [],
+    }));
+    const request = makeRequest({ market: 'acciones', assets }, { [SHARED_SECRET_HEADER]: SECRET });
 
     const response = await POST(request);
 
