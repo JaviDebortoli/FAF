@@ -418,4 +418,126 @@ None beyond the two consequences of D.5/D.3+D.7 documented above (both fixed wit
 **Phase B**: 9/9 tasks complete (B.1-B.9).
 **Phase C**: 3/3 tasks complete (C.1-C.3).
 **Phase D**: 9/9 tasks complete (D.1-D.9). 58/58 focused tests pass; full suite 270/270 pass; full e2e suite 52/52 pass; `npx tsc --noEmit` — **zero errors anywhere in the repo** (first fully-green non-n8n verification point in this change).
-**Cumulative**: 29/46 total tasks complete across Phases A-F. Ready for `sdd-verify` on Phase A+B+C+D's scope, or `sdd-apply` again for Phase E (n8n workflow, manual-verification gate).
+**Cumulative (superseded by Phase E section below — kept for history)**: 29/46 total tasks complete across Phases A-F. Ready for `sdd-verify` on Phase A+B+C+D's scope, or `sdd-apply` again for Phase E (n8n workflow, manual-verification gate).
+
+---
+
+# Phase E of 6 — n8n Workflow: Acciones Branch via Twelve Data (PR5) — `[MANUAL-VERIFICATION-ONLY]` gate
+
+**Scope**: tasks E.1-E.9 only. This is a config-only phase — `n8n/faf-workflow.json` is a JSON
+workflow definition with no TypeScript and no automated test harness (design.md's Testing Strategy
+table classifies it as "manual smoke test... not unit-testable"). E.10 and E.11 are
+`[MANUAL-VERIFICATION-ONLY]` gate items that require the user's live n8n instance and cannot be
+self-certified by this apply batch — they are left **unchecked** below, deliberately, matching this
+session's established convention for `n8n-cadence-6h`/`cycle-cache-ttl-6h`/`narrative-model-haiku`.
+Phase F (final full-suite verification across all 5 merged phases) is **NOT** started.
+
+## Mode: Standard (config-only — no TDD applicable per design.md Testing Strategy)
+
+## Completed Tasks (Phase E, PR5)
+
+- [x] E.1 `n8n/faf-workflow.json` `Fetch Klines` node: `interval` query param changed `'1h'` -> `'1d'` (D1). Nothing else on this node touched (limit=50, fullResponse=true, onError, notes text all byte-identical).
+- [x] E.2 `n8n/faf-workflow.json` `Aggregate (build /api/cycle payload)` node: `jsCode`'s final `return` statement changed from `return [{ json: { assets } }];` to `return [{ json: { market: 'crypto', assets } }];`; `notes` field gained one clarifying sentence about the new top-level `market` discriminator. No other logic touched.
+- [x] E.3 Added `Acciones Symbols` (Code) node: emits exactly the 24 tickers in the exact order given (`AAPL, MSFT, GOOGL, AMZN, NVDA, META, TSLA, BRK.B, JPM, V, UNH, XOM, JNJ, WMT, PG, MA, HD, CVX, MRK, ABBV, KO, PEP, AVGO, COST`), verified programmatically post-edit (`node -e` array-length + exact-order check, both passed). Structure mirrors `Symbols` node's own `pairedItem: { item: 0 }` convention and "DO NOT RENAME" warning verbatim.
+- [x] E.4 Added `Fetch Acciones Candles` (HTTP Request) node: `method: "GET"`, `url: "https://api.twelvedata.com/time_series"`, query params `symbol={{ $json.symbol }}` / `interval=1day` / `outputsize=50`, `authentication: "genericCredentialType"` + `genericAuthType: "httpQueryAuth"` with `credentials.httpQueryAuth: { id: null, name: "Twelve Data API Key" }` — the `apikey` value is supplied ONLY via this named credential reference, never inline as a literal string anywhere in the JSON (grepped the final file to confirm no `apikey=` literal exists outside the credential-name reference).
+- [x] E.5 Added `Set Acciones Symbol` (Set) node: `symbol = {{ $('Acciones Symbols').item.json.symbol }}`, `klines = {{ $json.values }}` (type `array`) — exactly as specified, no `.body` indirection (see the E.10 discussion below for why).
+- [x] E.6 Added `Aggregate Acciones Payload` (Code) node: `toCandle(row)` maps `{datetime, open, high, low, close, volume}` (Twelve Data's string-typed fields) to `{ openTime: Date.parse(row.datetime), open: Number(row.open), high: Number(row.high), low: Number(row.low), close: Number(row.close), volume: Number(row.volume) }`; output is `{ market: 'acciones', assets }`. No explicit re-sort added — `notes` field cites `src/stream/window.ts` already sorting by `openTime`, closing design.md Open Question 3 per the orchestrator's independent confirmation stated in this batch's launch prompt.
+- [x] E.7 Added `POST /api/cycle (Acciones)` (HTTP Request) node: byte-identical `parameters` shape to the existing crypto `POST /api/cycle` node (same `url`, same header/body config) except `name`; `credentials.httpHeaderAuth` reuses the EXACT same credential reference (`id: "LHoJc9c840UMktty"`, `name: "FAF Cycle Shared Secret"`) as the existing node — confirmed by diffing both nodes' `credentials` blocks programmatically, identical.
+- [x] E.8 `Schedule Trigger (6h)` node: added a second target to its existing `connections` fan-out array (`Symbols` and `Acciones Symbols` both now receive `main[0]`'s single output). The node object itself (`id`, `name`, `parameters.rule`, `notes`) is **completely untouched** — verified programmatically post-edit that `rule.interval[0].hoursInterval === 6` and the full `notes` string (starting "Per design.md D2...") is byte-identical to the pre-edit file. Only the `connections` object's `"Schedule Trigger (6h)"` entry was touched, exactly as scoped.
+- [x] E.9 `n8n/POST_IMPORT_STEPS.md`: added an M2b section ("Create the Query Auth credential (Twelve Data)") immediately after M2's shared-secret credential section, matching M2's exact structure (credential type, name, field values, "select it on node X" instruction, one-sentence "never stored in the JSON" note); updated M1's topology diagram to show both branches (11 nodes, two branches fanning from the shared trigger) and its "no Merge Assets node" note to cover both `Fetch Klines` and `Fetch Acciones Candles`'s error pins; updated M3 to note `POST /api/cycle (Acciones)` shares the same deployed origin; added a new M4b section documenting the acciones branch's own item-count verification checklist (see E.10 below — this doc section is what operationalizes that manual-verification gate for the user).
+
+## `[MANUAL-VERIFICATION-ONLY]` — Left Open (NOT checked, by design)
+
+- [ ] E.10 Confirm Twelve Data's live `time_series` response is a single top-level JSON object (`{meta, values, status}`), not a top-level array, before activating the branch — verify `fullResponse: true` is genuinely NOT needed.
+- [ ] E.11 Live import into the user's n8n instance, Twelve Data credential provisioned, first successful `market: 'acciones'` push to `/api/cycle` confirmed end-to-end (`/dashboard/acciones` shows real data).
+
+This change **cannot archive as PASS** until the user confirms E.10 and E.11 live. `n8n/POST_IMPORT_STEPS.md`'s new M4b section gives the user the exact 4-step checklist to run against their own n8n instance to close both gates.
+
+## The E.10 Technical Question — What I Determined, and Why It Is Still Flagged Open
+
+**Question**: does `Fetch Acciones Candles` need `options.response.response.fullResponse: true`, the fix `Fetch Klines` required for Binance's array response?
+
+**My determination (implemented in the JSON as written): NO, fullResponse is NOT needed.**
+
+**Reasoning, grounded in this exact workflow's own documented behavior** (not just general n8n docs
+recall): `Fetch Klines`'s own `notes` field states the confirmed production incident precisely —
+*"without [fullResponse=true], n8n splits Binance's array-of-klines response into one item PER CANDLE
+ROW instead of one item per symbol... options.response.response.fullResponse=true... is REQUIRED:
+without it, n8n splits [a top-level JSON **array**] response into multiple items."* Twelve Data's
+`time_series` endpoint response for a single-symbol query is a top-level JSON **object**
+(`{meta, values, status}`), never a top-level array — this is Twelve Data's own documented API
+response shape, not something I am inferring. If n8n's item-splitting behavior is specifically
+triggered by a top-level array (which is exactly what `Fetch Klines`'s own incident-fix note
+describes, and is the behavior I recall as correct from n8n's HTTP Request node documentation), then a
+top-level object response should yield exactly one n8n item per HTTP call, with no split — meaning
+`fullResponse: true` is unnecessary here, and `Set Acciones Symbol` can read `$json.values` directly
+instead of `$json.body.values`.
+
+**Why this stays an open, unchecked gate rather than a confirmed fact**: I do not have live access to
+either n8n's own instance behavior or a real Twelve Data API response in this session (no network
+tool, no running n8n instance, no context7 n8n-docs lookup available in this toolset) — my reasoning
+is built entirely on (a) this exact file's own prior-incident documentation of n8n's behavior and (b)
+Twelve Data's documented response shape, not a live-verified test. Given this exact workflow has one
+**documented prior production incident from exactly this kind of item-count-explosion assumption**
+(the `n8n-fetch-klines-item-fix` change this file's own `Fetch Klines` notes reference), I am
+deliberately NOT self-certifying this as done. I embedded the full reasoning, the fallback fix
+(`fullResponse: true` + `$json.body.values`), and an explicit `[MANUAL-VERIFICATION-ONLY]` tag
+**directly in `Fetch Acciones Candles`'s and `Set Acciones Symbol`'s own `notes` fields in the JSON
+itself** (not just in this doc), and added the M4b checklist to `POST_IMPORT_STEPS.md`, so the user has
+everything needed to verify and, if my determination is wrong, fix it in exactly two places (one
+toggle, one expression change) with zero other blast radius.
+
+## Files Changed (Phase E)
+
+| File | Action | What Was Done |
+|------|--------|---------------|
+| `n8n/faf-workflow.json` | Modified | `Fetch Klines` interval `1h`->`1d`; `Aggregate (build /api/cycle payload)` output gains `market: 'crypto'`; added 5 new nodes (`Acciones Symbols`, `Fetch Acciones Candles`, `Set Acciones Symbol`, `Aggregate Acciones Payload`, `POST /api/cycle (Acciones)`); `Schedule Trigger (6h)`'s `connections` entry fans out to both `Symbols` and `Acciones Symbols` (node itself untouched); `connections` object gained 4 new keys wiring the acciones branch end-to-end |
+| `n8n/POST_IMPORT_STEPS.md` | Modified | Added M2b (Twelve Data Query Auth credential setup); added M4b (`[MANUAL-VERIFICATION-ONLY]` acciones branch item-count + end-to-end checklist); updated M1's topology diagram and M3's URL note to cover both branches |
+| `openspec/changes/acciones-market-integration/tasks.md` | Modified | Marked E.1-E.9 `[x]`; E.10-E.11 left `[ ]` (manual-verification-only gate) |
+
+## Verification Performed (config-only phase — no vitest/tsc applicable to this file type)
+
+Per design.md's Testing Strategy table, `n8n/faf-workflow.json` is config JSON with no unit-test
+harness. Verification performed instead:
+
+1. `node -e "JSON.parse(...)"` — file parses as valid JSON after every edit (ran after each Edit call, not just once at the end).
+2. Programmatic node/connection inventory: confirmed exactly 11 nodes (6 original + 5 new), and the `connections` object has exactly the 9 expected keys (5 original topology + 4 new acciones-branch keys; `Schedule Trigger (6h)` reused, not duplicated).
+3. Programmatic ticker-list check: `Acciones Symbols`'s `SYMBOLS` array extracted via regex, confirmed `length === 24` and `JSON.stringify(list) === JSON.stringify(expectedOrder)` for the exact 24-ticker list and order given in the task prompt.
+4. Programmatic field-by-field spot checks: `Fetch Klines`'s `interval` value is `"1d"`; `Aggregate (build /api/cycle payload)`'s `jsCode` ends with `market: 'crypto'`; `Fetch Acciones Candles`'s `method`/`url`/query params/`credentials` match spec exactly, and its `options` object is empty (`{}` — no `fullResponse` set, per the E.10 determination above); `Set Acciones Symbol`'s two assignments match spec exactly; `Aggregate Acciones Payload`'s `jsCode` ends with `market: 'acciones'`; `POST /api/cycle (Acciones)`'s `credentials` block is byte-identical to the existing `POST /api/cycle` node's.
+5. `Schedule Trigger (6h)` non-regression check: confirmed programmatically that `parameters.rule.interval[0].hoursInterval === 6` and the node's `notes` string still starts with `"Per design.md D2: n8n stays cron+fetch only..."` — i.e., byte-identical to the pre-edit file, per the launch prompt's explicit instruction not to touch this node's cadence/notes.
+6. `git diff --stat n8n/faf-workflow.json` — 188 insertions / 3 deletions, consistent with "5 new nodes + wiring + 2 one-line field edits," no unexpected churn.
+
+**No `npx tsc --noEmit` / `npx vitest run` / `npx playwright test` run for this batch** — none of Phase E's files are TypeScript or covered by any existing test file; running the full suite would only re-confirm Phase A-D's already-verified state (Phase D's apply-progress already recorded "zero errors anywhere in the repo" / "270/270 pass" / "52/52 e2e pass" as of the end of Phase D, and this batch touched no `.ts`/`.tsx` file).
+
+## Deviations from Design
+
+1. **Added `onError: "continueErrorOutput"` to `Fetch Acciones Candles`**, not explicitly named in design.md's n8n Workflow Plan table or tasks.md E.4's text. Design.md's Technical Approach section states "Reuse every existing pattern verbatim" as a repo-wide principle, and `Fetch Klines` (the crypto branch's direct analog) uses this exact setting to isolate a single failed-ticker fetch from aborting the whole run (matching `POST_IMPORT_STEPS.md`'s existing M5 resilience convention). Applied the same setting for symmetry and resilience; the error output pin is left unconnected, identical to `Fetch Klines`'s own convention, so this is a zero-risk, backward-compatible addition (a node either has this set and drops failed items gracefully, or doesn't and the whole execution could abort on one bad ticker — the former is strictly safer). Flagging since it was my addition, not literally specified.
+2. **`fullResponse` NOT set on `Fetch Acciones Candles`** (E.10's determination) — this is the one genuine open technical question in this phase, discussed in full above. Implemented as "not needed" based on reasoning from this exact file's own documented incident plus Twelve Data's documented response shape, but explicitly left as an unchecked `[MANUAL-VERIFICATION-ONLY]` gate (E.10) rather than self-certified, with the exact two-line fallback fix documented in three places (the node's own `notes`, this apply-progress section, and `POST_IMPORT_STEPS.md`'s new M4b) in case live verification proves it wrong.
+3. **`POST_IMPORT_STEPS.md`'s M4b section** goes beyond E.9's literal text ("document the Twelve Data API key provisioning step") to also include a full item-count verification checklist for the acciones branch, mirroring the existing M4 section's structure for the crypto branch. This directly operationalizes E.10/E.11's manual-verification gate for the user (who otherwise would have no written checklist for what "confirm live" actually means for this branch) — judged as in scope of E.9's spirit ("document... alongside the existing shared-secret credential steps," and M4 is exactly the kind of adjacent step M2's original doc already covers for the crypto branch).
+
+## Issues Found
+
+None. No regressions to Phase A-D's code — this batch touched only `n8n/faf-workflow.json`,
+`n8n/POST_IMPORT_STEPS.md`, and `tasks.md`; zero `.ts`/`.tsx`/`.md`(non-n8n) files touched.
+
+## Remaining Tasks (Phase E gate items + Phase F — NOT started)
+
+- [ ] E.10 `[MANUAL-VERIFICATION-ONLY]` — user must confirm live Twelve Data response shape.
+- [ ] E.11 `[MANUAL-VERIFICATION-ONLY]` — user must confirm live n8n import + credential + first successful acciones push end-to-end.
+- [ ] Phase F: final full-suite verification (after PR1-PR5 merge) — F.1-F.3, not started, explicitly out of this batch's scope per the launch prompt.
+
+## Workload / PR Boundary (Phase E)
+
+- Mode: chained PR slice (`stacked-to-main`, per tasks.md's Delivery Route Recommendation)
+- Current work unit: Unit 5 / PR5 (Phase E only)
+- Boundary: starts from `Fetch Klines`'s interval edit, ends at E.9's `POST_IMPORT_STEPS.md` update. Touches exactly the 2 files tasks.md's Suggested Work Unit 5 rollback boundary names (`n8n/faf-workflow.json`, `n8n/POST_IMPORT_STEPS.md`) plus `tasks.md` — independently revertible from PR1-PR4, per the proposal's Rollback Plan.
+- Estimated review budget impact: within PR5's forecasted slice; config-only diff (188 insertions/3 deletions in the JSON, ~40 lines in the markdown doc), no code/test files touched. Not committed by this batch — orchestrator will review and commit separately.
+
+## Status
+
+**Phase A**: 8/8 tasks complete (A.1-A.8).
+**Phase B**: 9/9 tasks complete (B.1-B.9).
+**Phase C**: 3/3 tasks complete (C.1-C.3).
+**Phase D**: 9/9 tasks complete (D.1-D.9).
+**Phase E**: 9/9 automatable tasks complete (E.1-E.9); 2/2 gate items (E.10-E.11) intentionally left open pending the user's live n8n confirmation.
+**Cumulative**: 38/46 total tasks complete across Phases A-F (E.10/E.11 counted as "not yet completable by this agent," not as failures). Ready for `sdd-verify` on Phase A-E's automatable scope (verify should treat E.10/E.11 as an expected, documented open gate, not a defect), or `sdd-apply` again for Phase F once the user confirms E.10/E.11 live and all 5 PRs are merged.

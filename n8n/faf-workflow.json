@@ -27,7 +27,7 @@
             },
             {
               "name": "interval",
-              "value": "1h"
+              "value": "1d"
             },
             {
               "name": "limit",
@@ -89,7 +89,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Each incoming item carries one asset's symbol + raw Binance klines\n// response (array of [openTime, open, high, low, close, volume, closeTime, ...]),\n// both attached explicitly by the per-branch 'Set Symbol - {SYMBOL}' node\n// upstream. No positional (item-order) inference is used here.\n\nfunction toCandle(row) {\n  return {\n    openTime: Number(row[0]),\n    open: Number(row[1]),\n    high: Number(row[2]),\n    low: Number(row[3]),\n    close: Number(row[4]),\n    volume: Number(row[5]),\n  };\n}\n\nconst assets = items.map((item) => ({\n  symbol: item.json.symbol,\n  klines: item.json.klines.map(toCandle),\n}));\n\nreturn [{ json: { assets } }];"
+        "jsCode": "// Each incoming item carries one asset's symbol + raw Binance klines\n// response (array of [openTime, open, high, low, close, volume, closeTime, ...]),\n// both attached explicitly by the per-branch 'Set Symbol - {SYMBOL}' node\n// upstream. No positional (item-order) inference is used here.\n\nfunction toCandle(row) {\n  return {\n    openTime: Number(row[0]),\n    open: Number(row[1]),\n    high: Number(row[2]),\n    low: Number(row[3]),\n    close: Number(row[4]),\n    volume: Number(row[5]),\n  };\n}\n\nconst assets = items.map((item) => ({\n  symbol: item.json.symbol,\n  klines: item.json.klines.map(toCandle),\n}));\n\nreturn [{ json: { market: 'crypto', assets } }];"
       },
       "id": "ea1721fd-6a09-4e75-b343-4ea9e8ff7c0c",
       "name": "Aggregate (build /api/cycle payload)",
@@ -99,7 +99,7 @@
         224,
         0
       ],
-      "notes": "Only reshapes raw Binance kline arrays [openTime,open,high,low,close,volume,...] into the Candle[] shape app/api/cycle/route.ts expects ({symbol, klines:[{openTime,open,high,low,close,volume}]}). No RDF, no indicator math, no decision logic here - all of that stays server-side (D2). Reads item.json.symbol/item.json.klines directly, both hardcoded/attached by the per-branch Set node upstream - no positional item-order inference."
+      "notes": "Only reshapes raw Binance kline arrays [openTime,open,high,low,close,volume,...] into the Candle[] shape app/api/cycle/route.ts expects ({symbol, klines:[{openTime,open,high,low,close,volume}]}). No RDF, no indicator math, no decision logic here - all of that stays server-side (D2). Reads item.json.symbol/item.json.klines directly, both hardcoded/attached by the per-branch Set node upstream - no positional item-order inference. Output also carries a top-level market:'crypto' discriminator (acciones-market-integration design.md D-A/D-C), so app/api/cycle/route.ts routes this push to the crypto-keyed cache entry independently of the acciones branch's push."
     },
     {
       "parameters": {
@@ -157,6 +157,142 @@
         16
       ],
       "notes": "Per design.md D2: n8n stays cron+fetch only, no RDF-ification. Cadence is 6h, reduced from a finer interval specifically to cut n8n execution volume and budget spend (explicit cost-reduction decision). This coarser cadence is safe because Fetch Klines fetches limit=50 1h candles per cycle: at 6h between runs, only ~6 new hourly candles land per cycle, well within the 50-candle window (~44-candle safety margin) -- the fetch always covers the full gap since the previous run. As a secondary backstop, runCycle is also a pure function of its input candles (no wall-clock reads), so if a cycle ever runs against unchanged/already-processed candles, repeated /api/cycle calls are idempotent no-ops (tests/cycle/idempotency.test.ts), not a correctness risk."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Emits one item per configured US equity ticker. Mirrors 'Symbols' (the\n// crypto branch's equivalent node): one array entry per asset, node count\n// and wiring never change. Adding a ticker = one array entry here.\n//\n// /api/cycle validates each symbol via ACCIONES_SYMBOL_PATTERN\n// (^[A-Z]{1,5}(\\.[A-Z])?$ - src/market/assets.ts), independent of any\n// list, plus the shared MAX_ASSETS=25 cap applied per market\n// (openspec/changes/acciones-market-integration/design.md D-C).\n//\n// 24 symbols, large-cap US equities across sectors -- well below the\n// MAX_ASSETS=25 ceiling.\nconst SYMBOLS = [\n  'AAPL',\n  'MSFT',\n  'GOOGL',\n  'AMZN',\n  'NVDA',\n  'META',\n  'TSLA',\n  'BRK.B',\n  'JPM',\n  'V',\n  'UNH',\n  'XOM',\n  'JNJ',\n  'WMT',\n  'PG',\n  'MA',\n  'HD',\n  'CVX',\n  'MRK',\n  'ABBV',\n  'KO',\n  'PEP',\n  'AVGO',\n  'COST'\n];\n\n// pairedItem is stated explicitly: every symbol item derives from the\n// single Schedule Trigger item. This keeps n8n's item-linking chain\n// complete for the downstream $('Acciones Symbols').item back-reference in\n// 'Set Acciones Symbol'.\nreturn SYMBOLS.map((symbol) => ({ json: { symbol }, pairedItem: { item: 0 } }));"
+      },
+      "id": "a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5",
+      "name": "Acciones Symbols",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        216
+      ],
+      "notes": "Acciones branch's single source of asset list (mirrors 'Symbols', the crypto branch's equivalent node). Emits one item per symbol; every downstream node in this branch runs once per item. /api/cycle validates each symbol via ACCIONES_SYMBOL_PATTERN (^[A-Z]{1,5}(\\.[A-Z])?$, src/market/assets.ts), independent of any list, plus the shared MAX_ASSETS=25 cap applied per market. Adding or removing a ticker here needs no app-side change beyond staying within that cap. DO NOT RENAME this node: 'Set Acciones Symbol' recovers each item's symbol through $('Acciones Symbols')."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.twelvedata.com/time_series",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "={{ $json.symbol }}"
+            },
+            {
+              "name": "interval",
+              "value": "1day"
+            },
+            {
+              "name": "outputsize",
+              "value": "50"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-f6a7-4b8c-9d0e-f1a2b3c4d5e6",
+      "name": "Fetch Acciones Candles",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -240,
+        216
+      ],
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpQueryAuth": {
+          "id": null,
+          "name": "Twelve Data API Key"
+        }
+      },
+      "notes": "Raw fetch only (mirrors 'Fetch Klines', the crypto branch's equivalent node). ONE node for every US equity: n8n runs it once per input item, so the 'symbol' query value is the per-item expression {{ $json.symbol }} instead of a literal - adding a ticker needs no new node. outputsize=50 matches the system's uniform per-cycle window (see design.md 'Why 50'). MANUAL STEP - create a Query Auth credential named exactly 'Twelve Data API Key' with Name=apikey and Value=<your Twelve Data API key>, then select it here; apikey is supplied ONLY via this credential, never inline in this JSON (T-2 pattern, mirrors 'FAF Cycle Shared Secret'). onError routes a PER-ITEM Twelve Data failure/rate-limit to this node's dedicated ERROR output pin (main[1]), left intentionally unconnected, mirroring 'Fetch Klines'' isolation semantics. [MANUAL-VERIFICATION-ONLY, acciones-market-integration design.md]: Twelve Data's time_series response for a single symbol is a top-level JSON OBJECT ({meta, values, status}), not an array - per this exact workflow's own confirmed n8n behavior (see 'Fetch Klines' notes: n8n only auto-splits top-level ARRAY responses into one item per element; a top-level OBJECT response always yields exactly one item), this node should NOT need options.response.response.fullResponse=true the way 'Fetch Klines' needed it for Binance's raw array. This has NOT been confirmed against a live Twelve Data response yet - verify item count is exactly 1-per-symbol (not more) before activating this branch in production; if it explodes, apply the same fullResponse=true + read $json.body.values fallback 'Fetch Klines'/'Set Symbol' use."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-acciones-symbol-field",
+              "name": "symbol",
+              "value": "={{ $('Acciones Symbols').item.json.symbol }}",
+              "type": "string"
+            },
+            {
+              "id": "set-acciones-klines-field",
+              "name": "klines",
+              "value": "={{ $json.values }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c3d4e5f6-a7b8-4c9d-8e0f-1a2b3c4d5e6f",
+      "name": "Set Acciones Symbol",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        216
+      ],
+      "notes": "Attaches this item's symbol plus the raw Twelve Data values array under a stable 'klines' field, so the Aggregate Acciones Payload Code node downstream never infers the asset from item order. Mirrors 'Set Symbol' (crypto branch). The symbol CANNOT be read from $json here: the HTTP Request node upstream replaced each item's json with Twelve Data's response body ({meta, values, status}). It is recovered by n8n item linking from the 'Acciones Symbols' node ($('Acciones Symbols').item), which resolves per item via pairedItem - so renaming 'Acciones Symbols' breaks this expression. klines reads $json.values directly (NOT $json.body.values) because Twelve Data's single-object response should not require fullResponse=true on 'Fetch Acciones Candles' upstream - this is a [MANUAL-VERIFICATION-ONLY] assumption, confirm it holds against a live response before activating this branch (see 'Fetch Acciones Candles' notes)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Each incoming item carries one ticker's symbol + raw Twelve Data values\n// array (strings: {datetime, open, high, low, close, volume, ...}), both\n// attached explicitly by 'Set Acciones Symbol' upstream. No positional\n// (item-order) inference is used here.\n//\n// No explicit re-sort: src/stream/window.ts already sorts candles by\n// openTime before building the candle window, so Twelve Data's\n// most-recent-first ordering needs no correction here (closes\n// acciones-market-integration design.md Open Question 3).\n\nfunction toCandle(row) {\n  return {\n    openTime: Date.parse(row.datetime),\n    open: Number(row.open),\n    high: Number(row.high),\n    low: Number(row.low),\n    close: Number(row.close),\n    volume: Number(row.volume),\n  };\n}\n\nconst assets = items.map((item) => ({\n  symbol: item.json.symbol,\n  klines: item.json.klines.map(toCandle),\n}));\n\nreturn [{ json: { market: 'acciones', assets } }];"
+      },
+      "id": "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f70",
+      "name": "Aggregate Acciones Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        216
+      ],
+      "notes": "Only reshapes Twelve Data's string-valued values[] ({datetime,open,high,low,close,volume}) into the Candle[] shape app/api/cycle/route.ts expects ({symbol, klines:[{openTime,open,high,low,close,volume}]}), plus the top-level market:'acciones' discriminator (acciones-market-integration design.md D-A/D-C). No RDF, no indicator math, no decision logic here - all of that stays server-side, mirrors 'Aggregate (build /api/cycle payload)' (crypto branch). Reads item.json.symbol/item.json.klines directly, both attached by 'Set Acciones Symbol' upstream - no positional item-order inference."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://faf-six.vercel.app/api/cycle",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "e5f6a7b8-c9d0-4e1f-af2b-3c4d5e6f7081",
+      "name": "POST /api/cycle (Acciones)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        216
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "LHoJc9c840UMktty",
+          "name": "FAF Cycle Shared Secret"
+        }
+      },
+      "notes": "Independent call from the crypto branch's 'POST /api/cycle' node - reuses the SAME shared-secret credential ('FAF Cycle Shared Secret'), same MANUAL STEP requirements (credential Name=x-faf-shared-secret and Value=<your FAF_CYCLE_SHARED_SECRET>). Payload carries market:'acciones' (from 'Aggregate Acciones Payload' upstream), so app/api/cycle/route.ts routes it to the acciones-keyed cache entry independently of the crypto branch's push (acciones-market-integration design.md D-A/D-B). T-2: the secret is NEVER stored in this JSON - n8n excludes credential values from workflow export."
     }
   ],
   "pinData": {},
@@ -210,6 +346,55 @@
         [
           {
             "node": "Symbols",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Acciones Symbols",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Acciones Symbols": {
+      "main": [
+        [
+          {
+            "node": "Fetch Acciones Candles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Acciones Candles": {
+      "main": [
+        [
+          {
+            "node": "Set Acciones Symbol",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Acciones Symbol": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Acciones Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Acciones Payload": {
+      "main": [
+        [
+          {
+            "node": "POST /api/cycle (Acciones)",
             "type": "main",
             "index": 0
           }

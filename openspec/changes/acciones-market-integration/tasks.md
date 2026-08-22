@@ -69,15 +69,15 @@ Chain strategy: stacked-to-main
 
 ## Phase E: n8n Workflow — Acciones Branch via Twelve Data (PR5) — [MANUAL-VERIFICATION-ONLY] gate at verify/archive
 
-- [ ] E.1 `n8n/faf-workflow.json` `Fetch Klines` node: change `interval` query param from `'1h'` to `'1d'` (D1).
-- [ ] E.2 `n8n/faf-workflow.json` `Aggregate (build /api/cycle payload)` node: output becomes `{ market: 'crypto', assets }`.
-- [ ] E.3 Add `Acciones Symbols` (Code) node emitting 24 items: `AAPL, MSFT, GOOGL, AMZN, NVDA, META, TSLA, BRK.B, JPM, V, UNH, XOM, JNJ, WMT, PG, MA, HD, CVX, MRK, ABBV, KO, PEP, AVGO, COST`.
-- [ ] E.4 Add `Fetch Acciones Candles` (HTTP Request) node: GET `https://api.twelvedata.com/time_series`, query `symbol={{$json.symbol}}&interval=1day&outputsize=50`, `apikey` via a dedicated n8n Query-Auth credential (never inline, matching the existing shared-secret credential pattern).
-- [ ] E.5 Add `Set Acciones Symbol` (Set) node: `symbol = $('Acciones Symbols').item.json.symbol`, `klines = $json.values`.
-- [ ] E.6 Add `Aggregate Acciones Payload` (Code) node: maps `values[].{datetime,open,high,low,close,volume}` (strings) -> `Candle` (`openTime = Date.parse(datetime)`, rest `Number(...)`); outputs `{ market: 'acciones', assets }`. No explicit re-sort needed — `src/stream/window.ts:64` already sorts by `openTime` before building the candle window (closes design.md Open Question 3).
-- [ ] E.7 Add `POST /api/cycle (Acciones)` (HTTP Request) node: same shared-secret credential as the existing POST node, independent call.
-- [ ] E.8 `Schedule Trigger` node: fan out `connections` to both `Symbols` and `Acciones Symbols`.
-- [ ] E.9 `n8n/POST_IMPORT_STEPS.md`: document the Twelve Data API key provisioning step (credential name/type) alongside the existing shared-secret credential steps.
+- [x] E.1 `n8n/faf-workflow.json` `Fetch Klines` node: change `interval` query param from `'1h'` to `'1d'` (D1).
+- [x] E.2 `n8n/faf-workflow.json` `Aggregate (build /api/cycle payload)` node: output becomes `{ market: 'crypto', assets }`.
+- [x] E.3 Add `Acciones Symbols` (Code) node emitting 24 items: `AAPL, MSFT, GOOGL, AMZN, NVDA, META, TSLA, BRK.B, JPM, V, UNH, XOM, JNJ, WMT, PG, MA, HD, CVX, MRK, ABBV, KO, PEP, AVGO, COST`.
+- [x] E.4 Add `Fetch Acciones Candles` (HTTP Request) node: GET `https://api.twelvedata.com/time_series`, query `symbol={{$json.symbol}}&interval=1day&outputsize=50`, `apikey` via a dedicated n8n Query-Auth credential (never inline, matching the existing shared-secret credential pattern).
+- [x] E.5 Add `Set Acciones Symbol` (Set) node: `symbol = $('Acciones Symbols').item.json.symbol`, `klines = $json.values`.
+- [x] E.6 Add `Aggregate Acciones Payload` (Code) node: maps `values[].{datetime,open,high,low,close,volume}` (strings) -> `Candle` (`openTime = Date.parse(datetime)`, rest `Number(...)`); outputs `{ market: 'acciones', assets }`. No explicit re-sort needed — `src/stream/window.ts:64` already sorts by `openTime` before building the candle window (closes design.md Open Question 3).
+- [x] E.7 Add `POST /api/cycle (Acciones)` (HTTP Request) node: same shared-secret credential as the existing POST node, independent call.
+- [x] E.8 `Schedule Trigger` node: fan out `connections` to both `Symbols` and `Acciones Symbols`.
+- [x] E.9 `n8n/POST_IMPORT_STEPS.md`: document the Twelve Data API key provisioning step (credential name/type) alongside the existing shared-secret credential steps.
 - [ ] E.10 `[MANUAL-VERIFICATION-ONLY]` Confirm Twelve Data's live `time_series` response is a single top-level JSON object (`{meta, values, status}`), not a top-level array, before activating the branch — verify the branch does NOT need the `fullResponse: true` fix Binance required (design.md's "Implementation-time verification item").
 - [ ] E.11 `[MANUAL-VERIFICATION-ONLY]` Live import into the user's n8n instance, Twelve Data credential provisioned, first successful `market: 'acciones'` push to `/api/cycle` confirmed end-to-end (`/dashboard/acciones` shows real data) — same gate this session used for `n8n-cadence-6h`/`cycle-cache-ttl-6h`/`narrative-model-haiku`. Requires explicit user confirmation before this change can archive as PASS.
 
