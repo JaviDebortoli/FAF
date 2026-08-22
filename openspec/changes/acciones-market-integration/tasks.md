@@ -51,9 +51,9 @@ Chain strategy: stacked-to-main
 
 ## Phase C: Narrative Route Market-Scoping (PR3)
 
-- [ ] C.1 RED `tests/api/narrative.test.ts`: update every `GET` call to append `?market=crypto` (or `acciones` where relevant); add scenarios per `decision-narrative` spec delta — missing `market` param 400, malformed symbol rejected per its declared market's pattern, a well-formed-for-one-market symbol never resolves through another market's cache (the "AAPL scoped to crypto never returns the acciones decision" scenario).
-- [ ] C.2 GREEN `app/api/decisions/[asset]/narrative/route.ts`: parse `?market=` from `request.url`, 400 on missing/invalid before any other validation; `isWellFormedAsset(market, asset)`; `cycleCache.getForAsset(market, asset)`; update the file's T-4 comment (no longer "ignores query string entirely").
-- [ ] C.3 Verify GREEN: `npx vitest run tests/api/narrative.test.ts` + `npx tsc --noEmit`.
+- [x] C.1 RED `tests/api/narrative.test.ts`: update every `GET` call to append `?market=crypto` (or `acciones` where relevant); add scenarios per `decision-narrative` spec delta — missing `market` param 400, malformed symbol rejected per its declared market's pattern, a well-formed-for-one-market symbol never resolves through another market's cache (the "AAPL scoped to crypto never returns the acciones decision" scenario).
+- [x] C.2 GREEN `app/api/decisions/[asset]/narrative/route.ts`: parse `?market=` from `request.url`, 400 on missing/invalid before any other validation; `isWellFormedAsset(market, asset)`; `cycleCache.getForAsset(market, asset)`; update the file's T-4 comment (no longer "ignores query string entirely").
+- [x] C.3 Verify GREEN: `npx vitest run tests/api/narrative.test.ts` + `npx tsc --noEmit`.
 
 ## Phase D: `BETA_MS` Widening + Dashboard Wiring (PR4)
 

@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import type { Market } from '@/src/domain/types';
 import { isWellFormedAsset } from '@/src/market/assets';
 import * as cycleCache from '@/src/cycle/latest';
 import { buildNarrativeFacts } from '@/src/narrative/facts';
@@ -28,6 +29,7 @@ const STREAM_DEADLINE_MS = 45_000;
 const INCOMPLETE_MARKER = '\n\n[NARRATIVE_INCOMPLETE]';
 
 type ErrorCode =
+  | 'BAD_MARKET'
   | 'BAD_ASSET'
   | 'NO_DECISION'
   | 'NOT_APPLICABLE'
@@ -36,6 +38,19 @@ type ErrorCode =
   | 'UPSTREAM_BUSY'
   | 'UPSTREAM_ERROR'
   | 'INTERNAL';
+
+/**
+ * acciones-market-integration (design.md D-E): same discriminator/validation
+ * shape as GET /api/decisions' D-D (`VALID_MARKETS`/`isMarket` guard) —
+ * duplicated rather than shared because Next.js route files may only export
+ * HTTP method handlers and fixed route-segment config, matching the existing
+ * precedent noted in app/api/cycle/route.ts and app/api/decisions/route.ts.
+ */
+const VALID_MARKETS: readonly Market[] = ['crypto', 'acciones'];
+
+function isMarket(value: string | null): value is Market {
+  return value !== null && (VALID_MARKETS as readonly string[]).includes(value);
+}
 
 function jsonError(status: number, code: ErrorCode, message: string, headers?: Record<string, string>): Response {
   return Response.json({ error: message, code }, { status, headers });
@@ -158,17 +173,25 @@ function textResponse(text: string, source: 'cache' | 'llm'): Response {
 
 /**
  * Next 15: the dynamic segment is a Promise and must be awaited. The route
- * ignores the request body and query string entirely (T-4) — the only
- * input is the `[asset]` path segment, gated by format (dynamic-asset-count:
- * push-only ingestion, no enumerated allowlist). Push-only: a cache miss
- * (nothing pushed yet) and a cached report that simply lacks this asset are
- * the same "no Decision" condition — `cycleCache.getForAsset` already
- * returns `null` for both, so there is no separate recompute fallback.
+ * requires a `market` query parameter (acciones-market-integration
+ * design.md D-E, mirroring GET /api/decisions' D-D): a missing or invalid
+ * value 400s before any other validation, including the `[asset]` path
+ * segment's own format check. Every other query parameter is still ignored
+ * (T-4) — a crafted query string beyond `market` cannot influence the
+ * prompt sent to the model. Push-only: a cache miss (nothing pushed yet)
+ * and a cached report that simply lacks this asset are the same "no
+ * Decision" condition — `cycleCache.getForAsset` already returns `null`
+ * for both, so there is no separate recompute fallback.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ asset: string }> }): Promise<Response> {
   const { asset } = await params;
 
-  if (!isWellFormedAsset(asset)) {
+  const market = new URL(request.url).searchParams.get('market');
+  if (!isMarket(market)) {
+    return jsonError(400, 'BAD_MARKET', '"market" query param must be "crypto" or "acciones"');
+  }
+
+  if (!isWellFormedAsset(market, asset)) {
     return jsonError(400, 'BAD_ASSET', 'Malformed asset symbol');
   }
 
@@ -179,7 +202,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ asse
     });
   }
 
-  const decision = cycleCache.getForAsset(asset);
+  const decision = cycleCache.getForAsset(market, asset);
   if (!decision) {
     return jsonError(404, 'NO_DECISION', 'No decision available for this asset');
   }

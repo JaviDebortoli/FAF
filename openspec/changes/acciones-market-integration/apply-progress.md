@@ -208,4 +208,94 @@ Zero errors in any Phase A or Phase B file. All remaining errors are exactly the
 
 **Phase A**: 8/8 tasks complete (A.1-A.8).
 **Phase B**: 9/9 tasks complete (B.1-B.9). 57/57 focused tests pass; `tsc --noEmit` zero errors in Phase A+B files.
-**Cumulative**: 17/46 total tasks complete across Phases A-F. Ready for `sdd-verify` on Phase A+B's scope, or `sdd-apply` again for Phase C.
+**Cumulative (superseded by Phase C section below — kept for history)**: 17/46 total tasks complete across Phases A-F. Ready for `sdd-verify` on Phase A+B's scope, or `sdd-apply` again for Phase C.
+
+---
+
+# Phase C of 6 — Narrative Route Market-Scoping (PR3)
+
+**Scope**: tasks C.1-C.3 only (tasks.md's own Phase C task list). Phase D
+(`BETA_MS` widening + dashboard wiring), Phase E (n8n workflow), and
+Phase F (final full-suite verification) are **NOT** started. The mechanical
+`market: 'crypto'` literal fixes still owed to
+`tests/dashboard/components/ArgumentGraph.test.ts`,
+`tests/dashboard/components/DecisionCard.test.ts`,
+`tests/dashboard/lib/scores.test.ts`, `tests/dashboard/lib/select.test.ts`,
+`tests/e2e/dashboard.spec.ts`, `tests/e2e/market-nav.spec.ts` are
+**intentionally untouched** — they remain Phase D's scope per Phase B's
+apply-progress note (`tests/narrative/facts.test.ts` turned out to already
+carry `market: 'crypto'` and needed no fix — verified clean under this
+phase's `tsc --noEmit` run).
+
+## Mode: Strict TDD
+
+## Completed Tasks (Phase C, PR3)
+
+- [x] C.1 RED `tests/api/narrative.test.ts`: updated every existing `GET` call to route through a `market`-aware `makeRequest()` (default URL now carries `?market=crypto`); updated `buildDecision`/`buildReport`/`primeReport` to the shared `market: Market = 'crypto'` shape Phase A/B established (this file's own fixtures were still on the pre-Phase-A shape — `Decision`/`DecisionReport` had no `market` field, `seedCycleCache` was called with the old 2-arg `(report, ttlMs)` signature); appended a new "market scoping (decision-narrative spec delta)" `describe` block with 5 new scenarios — missing `market` query param 400 (`BAD_MARKET`, using the spec's own "AAPL, no market" GIVEN), invalid `market` value 400 (`BAD_MARKET`), malformed acciones symbol 400 (`BAD_ASSET`, proving per-declared-market dispatch), a full acciones happy-path stream (proving `getForAsset('acciones', ...)` actually resolves, not just rejects), and the "symbol well-formed for one market never resolves through another market's cache" scenario (seeds only the acciones cache for AAPL, requests `?market=crypto`, asserts 400 `BAD_ASSET` — the acciones decision never leaks). Ran against the unmodified route: 16/20 failed for the right reason (route still called `isWellFormedAsset(asset)`/`cycleCache.getForAsset(asset)` with the stale 1-arg shape, so `market` positionally received the asset string and `asset` was `undefined`, making almost every request 400 `BAD_ASSET` regardless of intent).
+- [x] C.2 GREEN `app/api/decisions/[asset]/narrative/route.ts`: added `BAD_MARKET` to the route's `ErrorCode` union; added the same `VALID_MARKETS`/`isMarket` guard pattern Phase B established in `app/api/cycle/route.ts`/`app/api/decisions/route.ts` (duplicated per the same documented Next.js route-file-export constraint, not extracted); `GET` now parses `market` from `new URL(request.url).searchParams.get('market')` and 400s (`BAD_MARKET`) before any other check, including the `[asset]` path segment's own format validation; `isWellFormedAsset(market, asset)` and `cycleCache.getForAsset(market, asset)` now receive the two-arg market-scoped signatures Phase A/B established; updated the file's own T-4 doc comment — it no longer claims to "ignore the request body and query string entirely," since `market` is now a required, functionally-used query parameter (every *other* query parameter is still ignored, which is what T-4's crafted-query-string test actually verifies).
+- [x] C.3 Verify GREEN: `npx vitest run tests/api/narrative.test.ts` — 20/20 pass. `npx tsc --noEmit` — **zero errors in the narrative route or its test file** (and zero errors in any Phase A/B file, confirmed still clean). All remaining repo-wide `tsc` errors are confined to Phase D's dashboard-wiring scope: `tests/dashboard/components/ArgumentGraph.test.ts`, `tests/dashboard/components/DecisionCard.test.ts`, `tests/dashboard/lib/scores.test.ts`, `tests/dashboard/lib/select.test.ts`, `tests/e2e/dashboard.spec.ts`, `tests/e2e/market-nav.spec.ts` — all missing the `market` field on ad-hoc `Decision`/`DecisionReport` literals, exactly the "mechanical literal fix" set flagged (but not owned) at the end of Phase B. Full `npx vitest run` (informational, no typecheck): 269/269 pass across all 41 files — zero regressions anywhere in the suite.
+
+## Files Changed (Phase C)
+
+| File | Action | What Was Done |
+|------|--------|---------------|
+| `app/api/decisions/[asset]/narrative/route.ts` | Modified | Added `BAD_MARKET` error code + `VALID_MARKETS`/`isMarket` guard; `GET` requires `?market=`, 400s before any other validation; `isWellFormedAsset(market, asset)`/`cycleCache.getForAsset(market, asset)` two-arg calls; T-4 doc comment updated |
+| `tests/api/narrative.test.ts` | Modified | `makeRequest()` defaults to `?market=crypto`; `buildDecision`/`buildReport`/`primeReport` updated to the shared `market`-aware shape; malformed-symbol/never-pushed test URLs gained `?market=crypto`; crafted-query-string test gained `&market=crypto`; new "market scoping" `describe` block with 5 new scenarios (missing param, invalid param, malformed acciones symbol, acciones happy path, cross-market cache isolation) |
+| `openspec/changes/acciones-market-integration/tasks.md` | Modified | Marked C.1-C.3 `[x]` |
+
+## TDD Cycle Evidence (Phase C)
+
+| Task | Test File | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
+|------|-----------|-------|------------|-----|-------|-------------|----------|
+| C.1/C.2 | `tests/api/narrative.test.ts` | Unit (route handler) | ✅ N/A — file did not compile/pass under the pre-Phase-C fixture shape before this batch (Decision/DecisionReport `market` field + `seedCycleCache`'s 3-arg signature); this batch's own RED run (below) is the baseline | ✅ Written — 5 new scenarios + every pre-existing test's URL/fixture updated; ran against unmodified route: 16/20 failed for the right reason (stale 1-arg `isWellFormedAsset`/`getForAsset` calls made `market` silently receive the asset string) | ✅ Passed — 20/20 after C.2 | ✅ 5 distinct new code paths (missing param, invalid param, malformed-acciones-reject, acciones-accept, cross-market-isolation) — well beyond minimum 2, and specifically exercises BOTH branches of `isWellFormedAsset`'s market dispatch (crypto reject already covered by the pre-existing malformed test, acciones reject + accept both new) | ➖ None needed — `isMarket`/`VALID_MARKETS` guard is a verbatim reuse of Phase B's established one-line pattern, no duplication introduced beyond the already-accepted per-route-file duplication documented in Phase B |
+
+### Test Summary (Phase C)
+
+- **Total tests written**: 5 new (`tests/api/narrative.test.ts` "market scoping" describe block)
+- **Total tests passing**: 20/20 in Phase C's owned scope (`tests/api/narrative.test.ts`)
+- **Layers used**: Unit (20)
+- **Approval tests** (refactoring): None — no refactoring tasks; all edits are new-behavior changes
+- **Pure functions created**: 0 new (`isMarket` is a straight copy of Phase B's established guard shape, not a new abstraction)
+
+## Deviations from Design
+
+1. **Added a new `BAD_MARKET` error code**, not explicitly specified in design.md D-E or tasks.md C.2. Design.md D-E says only "same `?market=` query param as D-D... Validate, then...", and D-D's route (`GET /api/decisions`) returns a plain `{ error }` body with no `code` field on its 400. The narrative route, unlike `GET /api/decisions`, already has an established `ErrorCode`-tagged `jsonError(status, code, message)` convention for every other 400/404/409/429/5xx it returns (`BAD_ASSET`, `NO_DECISION`, etc.) — leaving the new market-validation 400 as a bare untagged error would have been the only response on this route without a `code`, breaking that file's own internal consistency and its test suite's existing `expect(body.code).toBe(...)` pattern. Adding `BAD_MARKET` to the `ErrorCode` union and using the existing `jsonError` helper was the smaller, more consistent choice. Flagging for `sdd-verify`: confirm this is acceptable, since it's an addition beyond what D-E/C.2 literally specify (though it does not change `GET /api/decisions`' own D-D-specified untagged-error shape, which is left untouched).
+2. **Added an "invalid market value" test/behavior** (`?market=forex` → 400) beyond the 3 scenarios tasks.md C.1 lists by name (missing param, malformed-per-market, cross-market-isolation). Design.md D-E explicitly says "same `?market=` query param as D-D," and D-D's own implementation (`app/api/decisions/route.ts`, Phase B) 400s on both missing AND invalid values via the same `isMarket` guard — so an invalid-value 400 is a direct, already-precedented consequence of "same mechanism as D-D," not a freelanced addition. Implemented for consistency with the existing `GET /api/decisions` behavior; not calling this a deviation from intent, just flagging it was not one of the 3 explicitly-named scenarios.
+3. **Added an "acciones happy path" test** (full stream, 200, `getForAsset('acciones', ...)` resolving) beyond the 3 named scenarios. This is decision-narrative spec's own "Valid acciones asset streams narrative" scenario (spec.md, not just tasks.md's narrower summary), and without it the acciones branch of `isWellFormedAsset`/`getForAsset` would only ever be exercised via rejection paths (malformed-symbol-reject, cross-market-reject) — never proven to actually resolve correctly. Added to satisfy Strict TDD's triangulation requirement (real GREEN, not just a rejection-only fake-it) and to close a spec scenario the task summary didn't explicitly call out but the underlying `decision-narrative` spec delta does.
+
+## Issues Found
+
+None. No regressions: full `npx vitest run` (all 41 files, 269 tests) passes with zero failures after this batch's changes, and `tsc --noEmit` shows zero new errors introduced by Phase C — the error set shrank by exactly the 2 files (`app/api/decisions/[asset]/narrative/route.ts`, `tests/api/narrative.test.ts`) this phase owned, per Phase B's own "still-expected downstream errors" list.
+
+## Remaining Tasks (Phase D onward — NOT started)
+
+- [ ] Phase D: `BETA_MS` widening + dashboard wiring (PR4) — `src/cycle/constants.ts`, `app/(dashboard)/lib/markets.ts`, `app/(dashboard)/components/OverviewClient.tsx`, `app/dashboard/(with-footer)/crypto/page.tsx`, new `acciones/page.tsx`, `tests/unit/markets.test.ts`, `tests/dashboard/crypto/page.test.ts` (plus the still-owed mechanical `market: 'crypto'` literal fixes to `tests/dashboard/components/ArgumentGraph.test.ts`, `tests/dashboard/components/DecisionCard.test.ts`, `tests/dashboard/lib/scores.test.ts`, `tests/dashboard/lib/select.test.ts`, `tests/e2e/dashboard.spec.ts`, `tests/e2e/market-nav.spec.ts` — confirmed by this phase's `tsc --noEmit` run as the complete remaining error set, all attributable to Phase D)
+- [ ] Phase E: n8n workflow — Acciones branch via Twelve Data (PR5, manual-verification gate)
+- [ ] Phase F: final full-suite verification (after PR1-PR5 merge)
+
+## Workload / PR Boundary (Phase C)
+
+- Mode: chained PR slice (`stacked-to-main`, per tasks.md's Delivery Route Recommendation)
+- Current work unit: Unit 3 / PR3 (Phase C only)
+- Boundary: starts from `tests/api/narrative.test.ts`'s fixture/query-param updates, ends at C.3's verify command. Touches exactly the 2 files listed in "Files Changed (Phase C)" above plus `tasks.md` — matches tasks.md's Suggested Work Unit 3 rollback boundary exactly (`app/api/decisions/[asset]/narrative/route.ts` + `tests/api/narrative.test.ts`, independent of PR4/PR5).
+- Estimated review budget impact: within PR3's forecasted slice; small, self-contained diff (2 files + tasks.md), no Phase D/E files touched
+
+## `npx tsc --noEmit` — Still-Expected Downstream Errors (Phase D scope, NOT fixed in this PR)
+
+Zero errors in any Phase A, Phase B, or Phase C file. All remaining errors are exactly the ad-hoc `Decision`/`DecisionReport` object literals across Phase D's owned test files, still missing the `market` field:
+
+- `tests/dashboard/components/ArgumentGraph.test.ts`
+- `tests/dashboard/components/DecisionCard.test.ts`
+- `tests/dashboard/lib/scores.test.ts`
+- `tests/dashboard/lib/select.test.ts`
+- `tests/e2e/dashboard.spec.ts`
+- `tests/e2e/market-nav.spec.ts`
+
+**Resolved in this PR** (no longer in the error list): `app/api/decisions/[asset]/narrative/route.ts`, `tests/api/narrative.test.ts`. **Also no longer in the list, confirmed already-clean** (was flagged uncertain in Phase B's apply-progress): `tests/narrative/facts.test.ts` — it already carried `market: 'crypto'` on its fixture.
+
+## Status
+
+**Phase A**: 8/8 tasks complete (A.1-A.8).
+**Phase B**: 9/9 tasks complete (B.1-B.9).
+**Phase C**: 3/3 tasks complete (C.1-C.3). 20/20 focused tests pass; full suite 269/269 pass; `tsc --noEmit` zero errors in Phase A+B+C files — narrative route and its test are the LAST TS-compile-blocking files outside Phase D's dashboard/e2e scope.
+**Cumulative**: 20/46 total tasks complete across Phases A-F. Ready for `sdd-verify` on Phase A+B+C's scope, or `sdd-apply` again for Phase D.
