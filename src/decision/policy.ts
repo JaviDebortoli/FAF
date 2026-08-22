@@ -58,8 +58,14 @@ function resolveNoRecommendationReason(
  * BUY iff sigma(mu+) >= theta AND sigma(mu+) - sigma(mu-) >= delta;
  * SELL iff sigma(mu-) >= theta AND sigma(mu-) - sigma(mu+) >= delta;
  * otherwise NO_RECOMMENDATION with a distinguishing reason.
+ *
+ * Returns `Omit<Decision, 'market'>`, not `Decision`: `market` is a
+ * composition-layer identity field (design.md D-A), attached by the caller
+ * (src/cycle/runCycle.ts's `decideForAsset`), not reasoning input — this
+ * keeps L4's decision algebra (THETA/DELTA/score()) itself untouched and
+ * fully asset-agnostic (proposal Out of Scope).
  */
-export function decide(bullish: ThesisState, bearish: ThesisState, ctx: DecisionContext): Decision {
+export function decide(bullish: ThesisState, bearish: ThesisState, ctx: DecisionContext): Omit<Decision, 'market'> {
   const sigmaPlus = score(bullish.net);
   const sigmaMinus = score(bearish.net);
 

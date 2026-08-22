@@ -20,12 +20,14 @@ import type { Candle } from '@/src/domain/types';
 
 describe('Golden #1 — runCycle end-to-end over the paper-example fixture', () => {
   it('reproduces lambda*(mu+)=<0.50,0.00>, sigma+=0.75, sigma-=0.475, gap=0.275 -> BUY (tol 1e-9)', () => {
-    const report = runCycle([{ asset: 'BTCUSDT', candles: candles as Candle[] }]);
+    const report = runCycle([{ asset: 'BTCUSDT', market: 'crypto', candles: candles as Candle[] }]);
 
     expect(report.decisions).toHaveLength(1);
     const decision = report.decisions[0]!;
 
     expect(decision.asset).toBe('BTCUSDT');
+    expect(decision.market).toBe('crypto');
+    expect(report.market).toBe('crypto');
     expect(decision.recommendation).toBe('BUY');
 
     expect(decision.bullish.net.gamma).toBeCloseTo(0.5, 9);
@@ -43,8 +45,8 @@ describe('Golden #1 — runCycle end-to-end over the paper-example fixture', () 
   });
 
   it('is a pure function: recomputing from the same fixture yields a byte-identical decision', () => {
-    const reportA = runCycle([{ asset: 'BTCUSDT', candles: candles as Candle[] }]);
-    const reportB = runCycle([{ asset: 'BTCUSDT', candles: candles as Candle[] }]);
+    const reportA = runCycle([{ asset: 'BTCUSDT', market: 'crypto', candles: candles as Candle[] }]);
+    const reportB = runCycle([{ asset: 'BTCUSDT', market: 'crypto', candles: candles as Candle[] }]);
 
     expect(reportA.decisions[0]!.recommendation).toBe(reportB.decisions[0]!.recommendation);
     expect(reportA.decisions[0]!.gap).toBe(reportB.decisions[0]!.gap);

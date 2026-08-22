@@ -17,7 +17,7 @@ import type { Candle } from '@/src/domain/types';
 
 describe('runCycle idempotency (design.md D-B)', () => {
   it('produces a byte-identical DecisionReport for two calls with identical input klines', () => {
-    const input = [{ asset: 'BTCUSDT', candles: candles as Candle[] }];
+    const input = [{ asset: 'BTCUSDT', market: 'crypto' as const, candles: candles as Candle[] }];
 
     const reportA = runCycle(input);
     const reportB = runCycle(input);
@@ -29,8 +29,8 @@ describe('runCycle idempotency (design.md D-B)', () => {
     // Simulates two separate n8n cron ticks pushing the same in-progress
     // hourly candle set as two distinct payload objects (not the same
     // in-memory reference) — the realistic cross-request scenario.
-    const inputA = [{ asset: 'BTCUSDT', candles: JSON.parse(JSON.stringify(candles)) as Candle[] }];
-    const inputB = [{ asset: 'BTCUSDT', candles: JSON.parse(JSON.stringify(candles)) as Candle[] }];
+    const inputA = [{ asset: 'BTCUSDT', market: 'crypto' as const, candles: JSON.parse(JSON.stringify(candles)) as Candle[] }];
+    const inputB = [{ asset: 'BTCUSDT', market: 'crypto' as const, candles: JSON.parse(JSON.stringify(candles)) as Candle[] }];
 
     const reportA = runCycle(inputA);
     const reportB = runCycle(inputB);
@@ -39,10 +39,10 @@ describe('runCycle idempotency (design.md D-B)', () => {
   });
 
   it('multi-asset cycles are idempotent per-asset and independently of asset order', () => {
-    const btc = { asset: 'BTCUSDT', candles: candles as Candle[] };
+    const btc = { asset: 'BTCUSDT', market: 'crypto' as const, candles: candles as Candle[] };
     // A second asset with insufficient history still produces a
     // (NO_RECOMMENDATION) decision deterministically, not a thrown error.
-    const eth = { asset: 'ETHUSDT', candles: (candles as Candle[]).slice(0, 5) };
+    const eth = { asset: 'ETHUSDT', market: 'crypto' as const, candles: (candles as Candle[]).slice(0, 5) };
 
     const reportA = runCycle([btc, eth]);
     const reportB = runCycle([eth, btc]);

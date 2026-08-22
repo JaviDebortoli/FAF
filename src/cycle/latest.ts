@@ -1,10 +1,18 @@
-import type { Asset, Decision, DecisionReport, Millis } from '@/src/domain/types';
+import type { Asset, Decision, DecisionReport, Market, Millis } from '@/src/domain/types';
 
 /**
- * Module-scope cache (dynamic-asset-count design.md Supersession section):
- * holds the most recently POSTed `DecisionReport` (produced by one
- * `/api/cycle` call, which evaluates every asset n8n pushed together) for up
- * to `ttlMs` (matches beta, the 1h candle step).
+ * Module-scope cache (dynamic-asset-count design.md Supersession section;
+ * market-keyed per design.md D-B / semantic-ingestion "Market-keyed
+ * presentation cache"): holds the most recently POSTed `DecisionReport` per
+ * `market`, produced by one `/api/cycle` call for that market, for up to
+ * `ttlMs` (BETA_MS).
+ *
+ * Market-keyed (`Map<Market, CacheEntry>`, mirroring src/narrative/cache.ts's
+ * per-key Map shape) rather than a single global entry: a push for one
+ * market must never overwrite, clear, or otherwise affect another market's
+ * cached entry — the cross-market overwrite hazard the prior single-entry
+ * cache had by construction, since every market shares the same in-memory
+ * module instance.
  *
  * Push-only ingestion: `POST /api/cycle` is the sole writer of this cache.
  * `GET /api/decisions` and the narrative route are pure readers — a cache
@@ -28,28 +36,29 @@ interface CacheEntry {
   expiresAt: Millis;
 }
 
-let entry: CacheEntry | null = null;
+const entries = new Map<Market, CacheEntry>();
 
-/** Stores `report`, valid until `atMs + ttlMs` (exclusive). */
-export function put(report: DecisionReport, ttlMs: Millis, atMs: Millis = Date.now()): void {
-  entry = { report, expiresAt: atMs + ttlMs };
+/** Stores `report` for `market`, valid until `atMs + ttlMs` (exclusive). */
+export function put(market: Market, report: DecisionReport, ttlMs: Millis, atMs: Millis = Date.now()): void {
+  entries.set(market, { report, expiresAt: atMs + ttlMs });
 }
 
-/** Returns the cached report if it exists and has not expired as of `atMs`, else `null`. */
-export function get(atMs: Millis = Date.now()): DecisionReport | null {
+/** Returns `market`'s cached report if it exists and has not expired as of `atMs`, else `null`. */
+export function get(market: Market, atMs: Millis = Date.now()): DecisionReport | null {
+  const entry = entries.get(market);
   if (!entry) return null;
   if (atMs >= entry.expiresAt) return null;
   return entry.report;
 }
 
-/** Convenience lookup: this asset's Decision from the cached report, if fresh. */
-export function getForAsset(asset: Asset, atMs: Millis = Date.now()): Decision | null {
-  const report = get(atMs);
+/** Convenience lookup: this asset's Decision from `market`'s cached report, if fresh. */
+export function getForAsset(market: Market, asset: Asset, atMs: Millis = Date.now()): Decision | null {
+  const report = get(market, atMs);
   if (!report) return null;
   return report.decisions.find((d) => d.asset === asset) ?? null;
 }
 
-/** Test-only helper: clears the cache so tests do not leak state across cases. */
+/** Test-only helper: clears every market's cache entry so tests do not leak state across cases. */
 export function clear(): void {
-  entry = null;
+  entries.clear();
 }

@@ -5,6 +5,7 @@
 
 export type Asset = string; // "BTCUSDT"
 export type Millis = number; // t in T (epoch ms)
+export type Market = 'crypto' | 'acciones';
 
 export interface Candle {
   openTime: Millis;
@@ -86,6 +87,7 @@ export type NoRecommendationReason =
 
 export interface Decision {
   asset: Asset;
+  market: Market;
   t: Millis;
   recommendation: Recommendation;
   reason?: NoRecommendationReason;
@@ -98,6 +100,7 @@ export interface Decision {
 
 export interface DecisionReport {
   cycleId: string;
+  market: Market;
   computedAt: Millis;
   decisions: Decision[];
 }

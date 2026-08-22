@@ -1,5 +1,5 @@
 import * as cycleCache from '@/src/cycle/latest';
-import type { Argument, Decision, DecisionReport, Evidence, Label, ThesisState } from '@/src/domain/types';
+import type { Argument, Decision, DecisionReport, Evidence, Label, Market, ThesisState } from '@/src/domain/types';
 
 /**
  * Shared cache-seeding seam (design.md "Testing Strategy" / tasks.md 2a.1):
@@ -45,6 +45,7 @@ export function buildDecision(overrides: Partial<Decision> = {}): Decision {
 
   return {
     asset: DEFAULT_ASSET,
+    market: 'crypto',
     t: DEFAULT_T,
     recommendation: 'BUY',
     bullish,
@@ -56,12 +57,12 @@ export function buildDecision(overrides: Partial<Decision> = {}): Decision {
   };
 }
 
-/** Wraps `decisions` (defaulting to one synthetic decision) in a `DecisionReport`. */
-export function buildReport(decisions: Decision[] = [buildDecision()]): DecisionReport {
-  return { cycleId: 'cycle_test', computedAt: DEFAULT_T, decisions };
+/** Wraps `decisions` (defaulting to one synthetic decision) in a `DecisionReport` for `market`. */
+export function buildReport(decisions: Decision[] = [buildDecision()], market: Market = 'crypto'): DecisionReport {
+  return { cycleId: 'cycle_test', market, computedAt: DEFAULT_T, decisions };
 }
 
 /** Thin wrapper around `cache.put` — the shared seam every push-only API test seeds through. */
-export function seedCycleCache(report: DecisionReport, ttlMs = 60_000): void {
-  cycleCache.put(report, ttlMs);
+export function seedCycleCache(report: DecisionReport, market: Market, ttlMs = 60_000): void {
+  cycleCache.put(market, report, ttlMs);
 }
