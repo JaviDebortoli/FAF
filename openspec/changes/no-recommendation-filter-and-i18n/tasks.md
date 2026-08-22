@@ -59,12 +59,12 @@ Chain strategy: stacked-to-main
 
 ## Phase 4: Remaining Spanish Prose + e2e Text Sweep (PR4)
 
-- [ ] 4.1 GREEN `app/(dashboard)/components/DashboardHeader.tsx:26`: replace `"BUY/SELL"` with the **exact pinned copy** from `openspec/specs/market-navigation/spec.md`'s "Determinism disclaimer" — `"Cada tarjeta muestra una recomendación Compra/Venta/Sin recomendación derivada de forma determinística por el framework argumentativo. Esta vista no contiene texto generado por IA."` (spec.md's slash-separated wording is authoritative here, not design.md's alternate phrasing — spec.md is pinned/byte-for-byte tested).
-- [ ] 4.2 GREEN `app/dashboard/(with-footer)/inicio/page.tsx`: apply design.md's 3 prose edits (lines ~43, ~55) — "BUY/SELL" -> "Compra, Venta o Sin recomendación" phrasing.
-- [ ] 4.3 GREEN `app/(dashboard)/components/PipelineDiagram.tsx:56` (`<desc>`): "recomendación BUY/SELL" -> "recomendación de Compra, Venta o Sin recomendación".
-- [ ] 4.4 GREEN `tests/e2e/market-nav.spec.ts:235,442`: update both disclaimer-copy assertions to the exact pinned string from 4.1.
-- [ ] 4.5 GREEN `tests/e2e/dashboard.spec.ts`: update remaining literal `'BUY'`/`'SELL'` text-content assertions (lines ~300-301, ~344, ~413-441 test titles/comments) to `'Compra'`/`'Venta'`; keep `data-recommendation` attribute assertions unchanged (still raw English, per design).
-- [ ] 4.6 Verify GREEN: `npx playwright test tests/e2e/market-nav.spec.ts tests/e2e/dashboard.spec.ts`.
+- [x] 4.1 GREEN `app/(dashboard)/components/DashboardHeader.tsx:26`: replace `"BUY/SELL"` with the **exact pinned copy** from `openspec/specs/market-navigation/spec.md`'s "Determinism disclaimer" — `"Cada tarjeta muestra una recomendación Compra/Venta/Sin recomendación derivada de forma determinística por el framework argumentativo. Esta vista no contiene texto generado por IA."` (spec.md's slash-separated wording is authoritative here, not design.md's alternate phrasing — spec.md is pinned/byte-for-byte tested).
+- [x] 4.2 GREEN `app/dashboard/(with-footer)/inicio/page.tsx`: apply design.md's 3 prose edits (lines ~43, ~55) — "BUY/SELL" -> "Compra, Venta o Sin recomendación" phrasing.
+- [x] 4.3 GREEN `app/(dashboard)/components/PipelineDiagram.tsx:56` (`<desc>`): "recomendación BUY/SELL" -> "recomendación de Compra, Venta o Sin recomendación".
+- [x] 4.4 GREEN `tests/e2e/market-nav.spec.ts:235,442`: update both disclaimer-copy assertions to the exact pinned string from 4.1.
+- [x] 4.5 GREEN `tests/e2e/dashboard.spec.ts`: update remaining literal `'BUY'`/`'SELL'` text-content assertions (lines ~300-301, ~344, ~413-441 test titles/comments) to `'Compra'`/`'Venta'`; keep `data-recommendation` attribute assertions unchanged (still raw English, per design).
+- [x] 4.6 Verify GREEN: `npx playwright test tests/e2e/market-nav.spec.ts tests/e2e/dashboard.spec.ts`.
 
 ## Phase 5: Final Verification (after all 4 PRs merged)
 

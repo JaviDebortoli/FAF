@@ -23,8 +23,8 @@ export function DashboardHeader({ title, showDisclaimer = false }: DashboardHead
       {showDisclaimer && (
         <>
           <p className="text-sm text-zinc-400">
-            Cada tarjeta muestra una recomendación BUY/SELL derivada de forma determinística por el
-            framework argumentativo. Esta vista no contiene texto generado por IA.
+            Cada tarjeta muestra una recomendación Compra/Venta/Sin recomendación derivada de forma
+            determinística por el framework argumentativo. Esta vista no contiene texto generado por IA.
           </p>
           <p className="text-sm text-zinc-400">
             El indicador semicircular de cada tarjeta muestra dos agujas: la verde (σ⁺) mide la evidencia a

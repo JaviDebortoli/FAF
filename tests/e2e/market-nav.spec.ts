@@ -268,7 +268,7 @@ test.describe('Dashboard header — eyebrow & disclaimer', () => {
     await gotoCrypto(page);
 
     await expect(page.locator('main')).toContainText(
-      'Cada tarjeta muestra una recomendación BUY/SELL derivada de forma determinística por el framework argumentativo. Esta vista no contiene texto generado por IA.',
+      'Cada tarjeta muestra una recomendación Compra/Venta/Sin recomendación derivada de forma determinística por el framework argumentativo. Esta vista no contiene texto generado por IA.',
     );
   });
 });
@@ -510,7 +510,7 @@ test.describe('Placeholder-market pages', () => {
     await expect(page).toHaveURL(/\/dashboard\/forex$/);
 
     await expect(page.locator('main')).toContainText(
-      'Cada tarjeta muestra una recomendación BUY/SELL derivada de forma determinística por el framework argumentativo. Esta vista no contiene texto generado por IA.',
+      'Cada tarjeta muestra una recomendación Compra/Venta/Sin recomendación derivada de forma determinística por el framework argumentativo. Esta vista no contiene texto generado por IA.',
     );
   });
 });

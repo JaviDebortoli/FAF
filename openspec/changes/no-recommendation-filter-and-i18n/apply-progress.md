@@ -279,3 +279,105 @@ None.
 ## Status (cumulative)
 
 23/28 total tasks complete (Phase 1: 12/12, Phase 2: 8/8, Phase 3: 3/3). Ready for orchestrator verification (`npx tsc --noEmit`, `npx vitest run`) and commit. Not yet ready for `sdd-verify` on the full change — Phases 4-5 remain.
+
+---
+
+# Phase 4 of 5 — Remaining Spanish Prose + e2e Text Sweep (PR4)
+
+Copy/CSS-only per design.md's testing-strategy table (GREEN-only, no
+fabricated RED test) — the Playwright pass over the updated e2e assertions
+is the GREEN signal for this phase, not a separate unit test. Before editing
+`tests/e2e/dashboard.spec.ts`/`market-nav.spec.ts`, grepped both files fresh
+for remaining literal `BUY`/`SELL`/`'ALL'` visible-text vs. machine-identifier
+usages per the phase instruction, to avoid redoing Phase 2's already-fixed
+`toContainText('BUY'/'SELL')` overlap (logged in Phase 2's section above) or
+missing anything new.
+
+## Mode
+
+Copy/CSS-only (per design.md's testing-strategy table). No TDD Cycle Evidence
+table — this phase has no RED step by design; the e2e Playwright run is the
+verification GREEN signal.
+
+## Pinned disclaimer text (quoted from spec.md before editing)
+
+`openspec/changes/no-recommendation-filter-and-i18n/specs/market-navigation/spec.md`
+"Determinism disclaimer" requirement pins, verbatim:
+
+> Cada tarjeta muestra una recomendación Compra/Venta/Sin recomendación derivada de forma determinística por el framework argumentativo. Esta vista no contiene texto generado por IA.
+
+This is spec.md's authoritative slash-separated wording, used exactly
+(byte-for-byte) in `DashboardHeader.tsx` and both `market-nav.spec.ts`
+assertions — not design.md's alternate "de forma determinística..." phrasing
+variant, per the phase instruction's explicit precedence rule.
+
+## Completed Tasks (Phase 4 — 6/6)
+
+- [x] 4.1 GREEN `app/(dashboard)/components/DashboardHeader.tsx:26`: disclaimer paragraph swapped to spec.md's exact pinned copy.
+- [x] 4.2 GREEN `app/dashboard/(with-footer)/inicio/page.tsx`: 2 prose edits applied (the file has only 2 BUY/SELL occurrences, not 3 as design.md's summary line estimated — see Deviations).
+- [x] 4.3 GREEN `app/(dashboard)/components/PipelineDiagram.tsx:56` (`<desc>`): "recomendación BUY/SELL" -> "recomendación de Compra, Venta o Sin recomendación".
+- [x] 4.4 GREEN `tests/e2e/market-nav.spec.ts`: both disclaimer-copy assertions (crypto view + placeholder-market view, `toContainText`) updated to the exact pinned string from 4.1.
+- [x] 4.5 GREEN `tests/e2e/dashboard.spec.ts`: swept for remaining literal `BUY`/`SELL` visible-text usages; updated 1 test title ("...actionable BUY card visible" -> "...actionable Compra card visible"), 1 test title ("narrows visible cards to BUY or SELL only" -> "...to Compra or Venta only"), and 2 descriptive comments (the "ALL (default): ... BUY, SELL..." block comment and "Only a BUY asset is actionable this cycle."). Left untouched: fixture doc-comments describing the raw `recommendation: 'BUY'/'SELL'` field values (lines ~73,78,85,113,117,171), the coercion-bug comment naming the raw enum value ("mislabeled as SELL", line ~323), and all `getByTestId('direction-filter-BUY'/'SELL'/'ALL')` selector calls/inline references — all correctly machine identifiers per design.md.
+- [x] 4.6 GREEN Verify GREEN: `npx playwright test tests/e2e/market-nav.spec.ts tests/e2e/dashboard.spec.ts` — 51/51 passed.
+
+## Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and exact result | `npx playwright test tests/e2e/market-nav.spec.ts tests/e2e/dashboard.spec.ts` — 51/51 passed |
+| Runtime harness command/scenario and exact result | Same command as above is the runtime harness for this phase (copy/CSS-only change; the e2e suite is the acceptance boundary, not a separate unit-test harness) |
+| Typecheck | `npx tsc --noEmit` — 0 errors |
+| Rollback boundary | Revert the 3 prose files (`DashboardHeader.tsx`, `inicio/page.tsx`, `PipelineDiagram.tsx`) and the `market-nav.spec.ts`/`dashboard.spec.ts` text-assertion/comment/title diff; no logic touched, no partial state possible |
+
+## Files Changed (Phase 4)
+
+| File | Action | What Was Done |
+|---|---|---|
+| `app/(dashboard)/components/DashboardHeader.tsx` | Modified | Disclaimer paragraph (line ~26): `"...recomendación BUY/SELL derivada..."` -> `"...recomendación Compra/Venta/Sin recomendación derivada..."` (spec.md's exact pinned wording) |
+| `app/dashboard/(with-footer)/inicio/page.tsx` | Modified | 2 prose edits: `"Cada recomendación BUY/SELL surge de un pipeline..."` -> `"Cada recomendación —Compra, Venta o Sin recomendación— surge de un pipeline..."`; `"...la decisión BUY/SELL nunca lo es."` -> `"...la decisión de Compra, Venta o Sin recomendación nunca lo es."` |
+| `app/(dashboard)/components/PipelineDiagram.tsx` | Modified | `<desc>` text (line ~56): `"...agregación en una recomendación BUY/SELL."` -> `"...agregación en una recomendación de Compra, Venta o Sin recomendación."` |
+| `tests/e2e/market-nav.spec.ts` | Modified | 2 disclaimer `toContainText` assertions (crypto view + placeholder-market view) updated to the new pinned string |
+| `tests/e2e/dashboard.spec.ts` | Modified | 2 test titles + 2 descriptive comments translated (`BUY`/`SELL`/`ALL` prose words -> `Compra`/`Venta`/`Todos`); all `data-testid`/`data-recommendation` machine-identifier strings and fixture-literal `recommendation: 'BUY'/'SELL'` values left unchanged |
+
+## Deviations from Design
+
+One minor, harmless deviation from design.md's prose-edit count: design.md's
+"Prose edits (exact before -> after)" table lists 3 rows for
+`inicio/page.tsx` (`:43`, `:55`, and an unlabeled 3rd), but the file as it
+exists today (post-`inicio-home-section`/`inicio-content-polish`/
+`inicio-visual-and-scroll-fix` changes, all landed after design.md was
+drafted) contains only 2 literal `BUY/SELL` occurrences — both edited. No
+3rd occurrence exists in the current file; nothing was left un-translated.
+Confirmed by a fresh grep of the file post-edit (0 remaining `BUY`/`SELL`
+matches). No other deviation — `DashboardHeader.tsx` uses spec.md's exact
+pinned slash-separated wording (not design.md's alternate phrasing, per the
+phase instruction's explicit precedence rule), and `PipelineDiagram.tsx`
+matches design.md's exact edit.
+
+## Issues Found
+
+None.
+
+## Out of Scope for This Batch (explicitly not touched)
+
+- Phase 5 final verification (`npx vitest run` full suite, `npx tsc --noEmit`
+  full-project confirmation already done here as a sanity check but not the
+  formal Phase 5 gate, D3 zero-diff self-check, spec-scenario self-check) —
+  runs only after the orchestrator independently verifies and commits this
+  Phase 4 diff.
+- `openspec/specs/decision-dashboard/spec.md`, `openspec/specs/market-navigation/spec.md` (already written by `sdd-spec`; no edits made in this apply batch).
+
+## Remaining Tasks
+
+- [ ] Phase 5: Final Verification (after all 4 PRs merged) — tasks 5.1-5.3
+
+## Workload / PR Boundary
+
+- Mode: chained PR slice (stacked-to-main, per tasks.md's Delivery Route Recommendation)
+- Current work unit: Unit 4 / PR4 — remaining Spanish prose + e2e text sweep
+- Boundary: starts from Phase 3's landed state (commit `214a0a5`), ends with all 6 Phase 4 tasks green (`npx playwright test tests/e2e/market-nav.spec.ts tests/e2e/dashboard.spec.ts`, `npx tsc --noEmit`)
+- Estimated review budget impact: within tasks.md's forecast for Phase 4 (lowest risk — copy-only, 5 files, no logic touched); orchestrator will independently verify (`npx tsc --noEmit`, `npx vitest run`, `npx playwright test`) and commit
+
+## Status (cumulative)
+
+29/32 total tasks complete (Phase 1: 12/12, Phase 2: 8/8, Phase 3: 3/3, Phase 4: 6/6, Phase 5: 0/3). Ready for orchestrator verification (`npx tsc --noEmit`, `npx vitest run`, `npx playwright test`) and commit. Not yet ready for `sdd-verify` on the full change — Phase 5 (final full-suite verification, run independently by the orchestrator after Phase 4 is committed) remains.

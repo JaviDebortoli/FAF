@@ -358,7 +358,7 @@ test.describe('Root / redirect', () => {
 });
 
 test.describe('Direct /dashboard/crypto visit', () => {
-  test('renders the crypto view directly, with the actionable BUY card visible', async ({ page }) => {
+  test('renders the crypto view directly, with the actionable Compra card visible', async ({ page }) => {
     await stubDecisions(page, MULTI_ASSET_REPORT);
     await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
 
@@ -444,7 +444,7 @@ test.describe('Tier 1 — no-data state', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Tier 1 — direction filter', () => {
-  test('narrows visible cards to BUY or SELL only', async ({ page }) => {
+  test('narrows visible cards to Compra or Venta only', async ({ page }) => {
     await stubDecisions(page, MULTI_ASSET_REPORT);
     await stubNarrativeError(page, 503, 'NARRATIVE_DISABLED');
 
@@ -453,22 +453,22 @@ test.describe('Tier 1 — direction filter', () => {
     const btcCard = page.getByTestId('decision-card-BTCUSDT');
     const ethCard = page.getByTestId('decision-card-ETHUSDT');
 
-    // ALL (default): all three cards visible — BUY, SELL, and the muted
+    // Todos (default): all three cards visible — Compra, Venta, and the muted
     // NO_RECOMMENDATION card (no-recommendation-filter-and-i18n D1 reversal).
     await expect(btcCard).toBeVisible();
     await expect(ethCard).toBeVisible();
 
-    // BUY: only BTCUSDT remains.
+    // Compra filter (direction-filter-BUY): only BTCUSDT remains.
     await page.getByTestId('direction-filter-BUY').click();
     await expect(btcCard).toBeVisible();
     await expect(ethCard).toHaveCount(0);
 
-    // SELL: only ETHUSDT remains.
+    // Venta filter (direction-filter-SELL): only ETHUSDT remains.
     await page.getByTestId('direction-filter-SELL').click();
     await expect(ethCard).toBeVisible();
     await expect(btcCard).toHaveCount(0);
 
-    // Back to ALL: both visible again.
+    // Back to Todos: both visible again.
     await page.getByTestId('direction-filter-ALL').click();
     await expect(btcCard).toBeVisible();
     await expect(ethCard).toBeVisible();
@@ -494,7 +494,7 @@ test.describe('Tier 1 — direction filter', () => {
   });
 
   test('shows the "filtered" empty state when a direction excludes every actionable card', async ({ page }) => {
-    // Only a BUY asset is actionable this cycle.
+    // Only a Compra asset is actionable this cycle.
     const buyOnlyReport: DecisionReport = {
       cycleId: 'cycle_e2e_buy_only',
       computedAt: T,

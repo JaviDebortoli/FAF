@@ -53,7 +53,7 @@ export function PipelineDiagram() {
       <desc id="pipeline-diagram-desc">
         Diagrama del flujo Datos → Indicadores → Reglas → Recomendación: ingesta de datos de mercado,
         cálculo de indicadores técnicos, evaluación de reglas argumentativas y agregación en una
-        recomendación BUY/SELL.
+        recomendación de Compra, Venta o Sin recomendación.
       </desc>
 
       {NODES.slice(0, -1).map((node, i) => {

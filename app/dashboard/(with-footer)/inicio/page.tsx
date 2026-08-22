@@ -40,7 +40,8 @@ export default function InicioPage() {
       <div className="flex flex-col gap-4 rounded-md border border-zinc-800 bg-zinc-950 p-5 text-base text-zinc-400">
         <p>
           FAF es una plataforma de recomendaciones de trading que no usa un modelo de lenguaje para decidir
-          qué comprar o vender. Cada recomendación BUY/SELL surge de un pipeline determinístico de 4 capas
+          qué comprar o vender. Cada recomendación —Compra, Venta o Sin recomendación— surge de un pipeline
+          determinístico de 4 capas
           (ingesta de datos de mercado, indicadores técnicos, reglas argumentativas y agregación de
           puntajes) que combina evidencia técnica (RSI, MACD, SMA, Bandas de Bollinger) sobre un umbral fijo
           θ = 0.67. El mismo dato de entrada siempre produce la misma recomendación.
@@ -52,7 +53,7 @@ export default function InicioPage() {
           se agregan en un puntaje σ (sigma); la tesis con mayor σ por encima del umbral θ gana, y la
           diferencia entre ambos puntajes (gap = |σ⁺ − σ⁻|) indica qué tan clara es la señal. El texto
           narrativo que acompaña cada recomendación sí puede ser generado por IA, pero se muestra siempre
-          con su propio aviso — la decisión BUY/SELL nunca lo es.
+          con su propio aviso — la decisión de Compra, Venta o Sin recomendación nunca lo es.
         </p>
       </div>
       <PipelineDiagram />
