@@ -35,9 +35,9 @@ Chain strategy: stacked-to-main
 
 ## Phase B: `src/cycle/latest.ts` Conversion (PR2 — the bug fix)
 
-- [ ] B.1 RED rewrite `tests/cycle/latest.test.ts`: `vi.mock('@/src/lib/redis', ...)` returning `fakeRedis`; replace every `atMs` argument with `vi.useFakeTimers()`/`vi.setSystemTime()`; keep the existing 6 scenarios (cross-market isolation both directions, independent TTL expiry, `getForAsset` market isolation both directions, `clear()`); assert the Redis key scheme `cycle:latest:{market}` is used. Confirm this fails against the not-yet-converted `latest.ts`.
-- [ ] B.2 GREEN `src/cycle/latest.ts`: convert `put`/`get`/`getForAsset`/`clear` to `async`, backed by `getRedis()`; `put(market, report, ttlMs)` calls `redis.set(\`cycle:latest:${market}\`, JSON.stringify(report), { ex: Math.max(1, Math.ceil(ttlMs / 1000)) })` and does NOT catch errors (propagates to the caller — design.md's Write failure handling decision); `get`/`getForAsset` catch all errors and return `null` (fail-open, design.md's Read failure handling decision); drop the `atMs` parameter entirely.
-- [ ] B.3 Verify GREEN: `npx vitest run tests/cycle/latest.test.ts` + `npx tsc --noEmit` (errors in not-yet-converted callers are expected/deferred to PR4, per this change's chained-PR strategy).
+- [x] B.1 RED rewrite `tests/cycle/latest.test.ts`: `vi.mock('@/src/lib/redis', ...)` returning `fakeRedis`; replace every `atMs` argument with `vi.useFakeTimers()`/`vi.setSystemTime()`; keep the existing 6 scenarios (cross-market isolation both directions, independent TTL expiry, `getForAsset` market isolation both directions, `clear()`); assert the Redis key scheme `cycle:latest:{market}` is used. Confirm this fails against the not-yet-converted `latest.ts`.
+- [x] B.2 GREEN `src/cycle/latest.ts`: convert `put`/`get`/`getForAsset`/`clear` to `async`, backed by `getRedis()`; `put(market, report, ttlMs)` calls `redis.set(\`cycle:latest:${market}\`, JSON.stringify(report), { ex: Math.max(1, Math.ceil(ttlMs / 1000)) })` and does NOT catch errors (propagates to the caller — design.md's Write failure handling decision); `get`/`getForAsset` catch all errors and return `null` (fail-open, design.md's Read failure handling decision); drop the `atMs` parameter entirely.
+- [x] B.3 Verify GREEN: `npx vitest run tests/cycle/latest.test.ts` + `npx tsc --noEmit` (errors in not-yet-converted callers are expected/deferred to PR4, per this change's chained-PR strategy).
 
 ## Phase C: `src/narrative/cache.ts` Conversion (PR3)
 
