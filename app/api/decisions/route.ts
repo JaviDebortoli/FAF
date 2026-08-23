@@ -38,7 +38,7 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({ error: '"market" query param must be "crypto" or "acciones"' }, { status: 400 });
   }
 
-  const cached = cache.get(market);
+  const cached = await cache.get(market);
   if (!cached) {
     return Response.json(
       { error: 'Service temporarily unavailable', code: 'NO_DATA' },

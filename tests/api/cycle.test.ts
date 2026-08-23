@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeRedis } from '@/tests/helpers/fakeRedis';
 
 // Threat matrix (design.md): T-1 untrusted inbound payload (schema + format
 // validation via isWellFormedAsset, no enumerated list), T-2 shared-secret
@@ -15,6 +16,12 @@ vi.mock('@/src/cycle/runCycle', () => ({
   runCycle: (...args: unknown[]) => runCycleMock(...args),
 }));
 
+// presentation-cache-persistence design.md's "Test double" decision: mock
+// the low-level Redis client, not the module under test — `cache.put` in
+// src/cycle/latest.ts is genuinely exercised, including its now-awaited
+// call site in this route (design.md's "Write failure handling" decision).
+vi.mock('@/src/lib/redis', () => ({ getRedis: () => fakeRedis }));
+
 const SHARED_SECRET_HEADER = 'x-faf-shared-secret';
 const SECRET = 'test-shared-secret';
 
@@ -29,11 +36,13 @@ function makeRequest(body: unknown, headers: Record<string, string> = {}): Reque
 beforeEach(() => {
   vi.stubEnv('FAF_CYCLE_SHARED_SECRET', SECRET);
   runCycleMock.mockClear();
+  fakeRedis.__reset();
 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('POST /api/cycle — T-1 payload validation', () => {
@@ -275,5 +284,46 @@ describe('POST /api/cycle — happy paths', () => {
     expect(response.status).toBe(400);
     expect(runCycleMock).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+// presentation-cache-persistence design.md "Write failure handling"
+// (confirmed decision): this cache has no fallback store, so a
+// silently-lost write means the report is durably nowhere. Returning 200
+// anyway would give n8n a false-positive success and the bug would
+// resurface invisibly. `cache.put` (src/cycle/latest.ts) does NOT catch its
+// own errors — this route's `try/catch` around the now-awaited call is what
+// turns a rejected write into a distinct, honest 502.
+describe('POST /api/cycle — cache write failure (design.md "Write failure handling")', () => {
+  it('a Redis write failure on cache.put yields 502 CACHE_WRITE_FAILED, not a false-positive 200', async () => {
+    vi.spyOn(fakeRedis, 'set').mockRejectedValueOnce(new Error('simulated Redis write failure'));
+    const { POST } = await import('@/app/api/cycle/route');
+    const request = makeRequest(
+      { market: 'crypto', assets: [{ symbol: 'BTCUSDT', klines: [] }] },
+      { [SHARED_SECRET_HEADER]: SECRET },
+    );
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(502);
+    expect(body).toEqual({ error: 'Failed to persist cycle result', code: 'CACHE_WRITE_FAILED' });
+    expect(runCycleMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('a successful cache.put still returns 200 with the report (regression: the try/catch does not swallow the happy path)', async () => {
+    const { POST } = await import('@/app/api/cycle/route');
+    const request = makeRequest(
+      { market: 'crypto', assets: [{ symbol: 'BTCUSDT', klines: [] }] },
+      { [SHARED_SECRET_HEADER]: SECRET },
+    );
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.cycleId).toBe('cycle_test');
+    const raw = await fakeRedis.get<string>('cycle:latest:crypto');
+    expect(raw).not.toBeNull();
   });
 });

@@ -62,7 +62,12 @@ export function buildReport(decisions: Decision[] = [buildDecision()], market: M
   return { cycleId: 'cycle_test', market, computedAt: DEFAULT_T, decisions };
 }
 
-/** Thin wrapper around `cache.put` — the shared seam every push-only API test seeds through. */
-export function seedCycleCache(report: DecisionReport, market: Market, ttlMs = 60_000): void {
-  cycleCache.put(market, report, ttlMs);
+/**
+ * Thin wrapper around `cache.put` — the shared seam every push-only API test
+ * seeds through. Async because `src/cycle/latest.ts` is now Redis-backed
+ * (presentation-cache-persistence Phase B) — every call site MUST `await`
+ * this to guarantee the write is durable before the test reads it back.
+ */
+export async function seedCycleCache(report: DecisionReport, market: Market, ttlMs = 60_000): Promise<void> {
+  await cycleCache.put(market, report, ttlMs);
 }

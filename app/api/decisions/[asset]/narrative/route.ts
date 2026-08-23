@@ -202,7 +202,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ asse
     });
   }
 
-  const decision = cycleCache.getForAsset(market, asset);
+  const decision = await cycleCache.getForAsset(market, asset);
   if (!decision) {
     return jsonError(404, 'NO_DECISION', 'No decision available for this asset');
   }
@@ -215,7 +215,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ asse
     return jsonError(503, 'NARRATIVE_DISABLED', 'Narrative generation is not configured');
   }
 
-  const cached = narrativeCache.get(asset, decision.t);
+  const cached = await narrativeCache.get(asset, decision.t);
   if (cached !== null) {
     return textResponse(cached, 'cache');
   }
@@ -232,6 +232,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ asse
 
   const body = buildNarrativeStream(generator, first, (fullText, completedCleanly) => {
     if (completedCleanly) {
+      // Fire-and-forget: presentation-cache-persistence design.md's
+      // Interfaces/Contracts annotates narrativeCache.put as
+      // `Promise<void>; // never throws to caller` (src/narrative/cache.ts
+      // catches and swallows all Redis write errors internally), so no
+      // `.catch(() => {})` is structurally necessary at this call site.
       narrativeCache.put(asset, decision.t, fullText);
     }
   });

@@ -1,9 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeRedis } from '@/tests/helpers/fakeRedis';
 import * as cycleCache from '@/src/cycle/latest';
 import * as narrativeCache from '@/src/narrative/cache';
 import * as rateLimit from '@/src/narrative/rateLimit';
 import { seedCycleCache } from '../helpers/seedCycleCache';
 import type { Argument, Decision, DecisionReport, Evidence, Label, Market, ThesisState } from '@/src/domain/types';
+
+// presentation-cache-persistence design.md's "Test double" decision: mock
+// the low-level Redis client, not the module under test, so both
+// cycleCache and narrativeCache's real key scheme/error-handling stay
+// genuinely exercised through this route.
+vi.mock('@/src/lib/redis', () => ({ getRedis: () => fakeRedis }));
 
 // design.md "Narrative Endpoint Contract" + Threat Matrix T-3/T-4/T-5/T-6:
 // full failure table against a mocked @anthropic-ai/sdk. No live network
@@ -110,8 +117,8 @@ function buildReport(decisions: Decision[], market: Market = 'crypto'): Decision
 // `market` (acciones-market-integration Phase C, D-B) is threaded through to the
 // shared cache's now-required `market` param — defaults to 'crypto' since the
 // vast majority of this file's scenarios are crypto-scoped.
-function primeReport(decisions: Decision[], market: Market = 'crypto'): void {
-  seedCycleCache(buildReport(decisions, market), market, 60_000);
+async function primeReport(decisions: Decision[], market: Market = 'crypto'): Promise<void> {
+  await seedCycleCache(buildReport(decisions, market), market, 60_000);
 }
 
 // acciones-market-integration Phase C (D-E): the narrative route now requires
@@ -128,22 +135,30 @@ function paramsFor(asset: string): { params: Promise<{ asset: string }> } {
   return { params: Promise.resolve({ asset }) };
 }
 
-beforeEach(() => {
-  cycleCache.clear();
-  narrativeCache.clear();
+beforeEach(async () => {
+  fakeRedis.__reset();
+  await cycleCache.clear();
+  await narrativeCache.clear();
   rateLimit.clear();
   ctorMock.mockClear();
   streamMock.mockReset();
   delete process.env.ANTHROPIC_API_KEY;
 });
 
-afterEach(() => {
-  cycleCache.clear();
-  narrativeCache.clear();
+afterEach(async () => {
+  await cycleCache.clear();
+  await narrativeCache.clear();
   rateLimit.clear();
   vi.unstubAllEnvs();
   delete process.env.ANTHROPIC_API_KEY;
   vi.useRealTimers();
+  // NOTE: deliberately NOT vi.restoreAllMocks() here — ctorMock's
+  // implementation is set once via mockImplementation() inside the
+  // vi.mock('@anthropic-ai/sdk', ...) factory (module-scope, runs once),
+  // not at vi.fn() construction time; restoreAllMocks() would wipe it back
+  // to a no-op after the first test, breaking every subsequent Anthropic
+  // client construction. fakeRedis spies use mockRejectedValueOnce, which
+  // self-consumes without needing a manual restore.
 });
 
 describe('GET /api/decisions/[asset]/narrative — failure table', () => {
@@ -174,7 +189,7 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
   });
 
   it('no Decision found for the asset in the current cache -> 404 NO_DECISION', async () => {
-    primeReport([buildDecision({ asset: 'ETHUSDT', recommendation: 'SELL' })]);
+    await primeReport([buildDecision({ asset: 'ETHUSDT', recommendation: 'SELL' })]);
     vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
     const { GET } = await import('@/app/api/decisions/[asset]/narrative/route');
 
@@ -186,8 +201,22 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
     expect(ctorMock).not.toHaveBeenCalled();
   });
 
+  it('a Redis read failure on cycleCache.getForAsset -> 404 NO_DECISION (fail-open), not a 500 (semantic-ingestion: Redis unreachable on read yields the existing no-data contract)', async () => {
+    await primeReport([buildDecision({ recommendation: 'BUY' })]);
+    vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
+    vi.spyOn(fakeRedis, 'get').mockRejectedValueOnce(new Error('simulated Redis read failure'));
+    const { GET } = await import('@/app/api/decisions/[asset]/narrative/route');
+
+    const response = await GET(makeRequest(), paramsFor(ASSET));
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body.code).toBe('NO_DECISION');
+    expect(ctorMock).not.toHaveBeenCalled();
+  });
+
   it('recommendation === NO_RECOMMENDATION -> 409 NOT_APPLICABLE, zero tokens spent, no client constructed (T-3)', async () => {
-    primeReport([buildDecision({ recommendation: 'NO_RECOMMENDATION', reason: 'NO_EVIDENCE' })]);
+    await primeReport([buildDecision({ recommendation: 'NO_RECOMMENDATION', reason: 'NO_EVIDENCE' })]);
     vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
     const { GET } = await import('@/app/api/decisions/[asset]/narrative/route');
 
@@ -200,7 +229,7 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
   });
 
   it('ANTHROPIC_API_KEY missing -> 503 NARRATIVE_DISABLED', async () => {
-    primeReport([buildDecision({ recommendation: 'BUY' })]);
+    await primeReport([buildDecision({ recommendation: 'BUY' })]);
     delete process.env.ANTHROPIC_API_KEY;
     const { GET } = await import('@/app/api/decisions/[asset]/narrative/route');
 
@@ -213,7 +242,7 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
   });
 
   it('Anthropic.RateLimitError from the SDK -> 503 UPSTREAM_BUSY', async () => {
-    primeReport([buildDecision({ recommendation: 'BUY' })]);
+    await primeReport([buildDecision({ recommendation: 'BUY' })]);
     vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     streamMock.mockImplementation(() => {
@@ -229,7 +258,7 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
   });
 
   it('Anthropic.APIConnectionError from the SDK -> 503 UPSTREAM_BUSY', async () => {
-    primeReport([buildDecision({ recommendation: 'BUY' })]);
+    await primeReport([buildDecision({ recommendation: 'BUY' })]);
     vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     streamMock.mockImplementation(() => {
@@ -245,7 +274,7 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
   });
 
   it('any other Anthropic.APIError -> 502 UPSTREAM_ERROR', async () => {
-    primeReport([buildDecision({ recommendation: 'BUY' })]);
+    await primeReport([buildDecision({ recommendation: 'BUY' })]);
     vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     streamMock.mockImplementation(() => {
@@ -261,7 +290,7 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
   });
 
   it('unknown/unexpected throw -> 500 INTERNAL', async () => {
-    primeReport([buildDecision({ recommendation: 'BUY' })]);
+    await primeReport([buildDecision({ recommendation: 'BUY' })]);
     vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
     streamMock.mockImplementation(() => {
       throw new TypeError('boom');
@@ -276,7 +305,7 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
   });
 
   it("this route's own rate limit exceeded -> 429 with a Retry-After header (T-3)", async () => {
-    primeReport([buildDecision({ recommendation: 'BUY' })]);
+    await primeReport([buildDecision({ recommendation: 'BUY' })]);
     vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
     streamMock.mockReturnValue(textDeltaStream([]));
     const { GET } = await import('@/app/api/decisions/[asset]/narrative/route');
@@ -285,7 +314,12 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
       const request = makeRequest(undefined, { 'x-forwarded-for': 'rate-limit-client' });
       const ok = await GET(request, paramsFor(ASSET));
       await ok.text();
-      narrativeCache.clear(); // force each of the 10 to be a live call, not a cache hit
+      // narrativeCache.clear() is now a documented no-op (Phase C deviation) —
+      // harmless here regardless: rate limiting (rateLimit.allow) runs before
+      // the cache lookup in the route, so this test's assertion (10 calls
+      // exhaust the limit, an 11th 429s) holds whether or not each of the 10
+      // is a genuine LLM call vs. a cache hit.
+      await narrativeCache.clear();
     }
 
     const limitedRequest = makeRequest(undefined, { 'x-forwarded-for': 'rate-limit-client' });
@@ -298,7 +332,7 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
   });
 
   it('repeated request for the same (asset, decision.t) -> cache hit, exactly ONE upstream call total (T-3)', async () => {
-    primeReport([buildDecision({ recommendation: 'BUY' })]);
+    await primeReport([buildDecision({ recommendation: 'BUY' })]);
     vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
     streamMock.mockReturnValue(textDeltaStream(['Hola ', 'mundo']));
     const { GET } = await import('@/app/api/decisions/[asset]/narrative/route');
@@ -319,7 +353,7 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
   });
 
   it('a crafted query string does not change the prompt sent to Claude — byte-identical to a clean request (T-4)', async () => {
-    primeReport([buildDecision({ recommendation: 'BUY' })]);
+    await primeReport([buildDecision({ recommendation: 'BUY' })]);
     vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
     streamMock.mockReturnValue(textDeltaStream(['ok']));
     const { GET } = await import('@/app/api/decisions/[asset]/narrative/route');
@@ -328,7 +362,14 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
     await cleanResponse.text(); // fully drain so any background cache write settles before we clear it
     const cleanCallArgs = JSON.stringify(streamMock.mock.calls[0]![0]);
 
-    narrativeCache.clear();
+    // narrativeCache.clear() is a documented no-op (presentation-cache-persistence
+    // Phase C deviation: no enumerable/finite key space to sweep against a
+    // get/set/del-only Redis client surface) — fakeRedis.__reset() plus
+    // re-seeding the cycle cache is this test's own cache-busting substitute,
+    // needed only because this test deliberately forces a second, distinct
+    // LLM call for the same (asset, t).
+    fakeRedis.__reset();
+    await primeReport([buildDecision({ recommendation: 'BUY' })]);
     streamMock.mockClear();
     streamMock.mockReturnValue(textDeltaStream(['ok']));
 
@@ -341,7 +382,7 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
   });
 
   it('a mocked Anthropic.APIError embedding a secret-shaped string never appears in the response body (T-5)', async () => {
-    primeReport([buildDecision({ recommendation: 'BUY' })]);
+    await primeReport([buildDecision({ recommendation: 'BUY' })]);
     vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const secretLike = 'sk-ant-api03-SUPER-SECRET-VALUE-DO-NOT-LEAK';
@@ -358,7 +399,7 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
   });
 
   it('a mocked stream that never yields a completion aborts at the 45s deadline, closes with [NARRATIVE_INCOMPLETE], and does not write to cache (T-6)', async () => {
-    primeReport([buildDecision({ recommendation: 'BUY' })]);
+    await primeReport([buildDecision({ recommendation: 'BUY' })]);
     vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
     streamMock.mockReturnValue(neverEndingStream(['Parcial']));
     const { GET } = await import('@/app/api/decisions/[asset]/narrative/route');
@@ -376,7 +417,7 @@ describe('GET /api/decisions/[asset]/narrative — failure table', () => {
       vi.useRealTimers();
     }
 
-    expect(narrativeCache.get(ASSET, T)).toBeNull();
+    await expect(narrativeCache.get(ASSET, T)).resolves.toBeNull();
   });
 });
 
@@ -424,7 +465,7 @@ describe('GET /api/decisions/[asset]/narrative — market scoping (decision-narr
   });
 
   it('valid acciones asset streams narrative (spec: Valid acciones asset streams narrative)', async () => {
-    primeReport([buildDecision({ asset: 'AAPL', market: 'acciones', recommendation: 'BUY' })], 'acciones');
+    await primeReport([buildDecision({ asset: 'AAPL', market: 'acciones', recommendation: 'BUY' })], 'acciones');
     vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
     streamMock.mockReturnValue(textDeltaStream(['Comprar AAPL']));
     const { GET } = await import('@/app/api/decisions/[asset]/narrative/route');
@@ -443,7 +484,7 @@ describe('GET /api/decisions/[asset]/narrative — market scoping (decision-narr
     // Seed ONLY the acciones cache for AAPL, then request the same symbol
     // scoped to crypto — a naive implementation that ignored `market` when
     // reading the cache could accidentally serve the acciones decision.
-    primeReport([buildDecision({ asset: 'AAPL', market: 'acciones', recommendation: 'BUY' })], 'acciones');
+    await primeReport([buildDecision({ asset: 'AAPL', market: 'acciones', recommendation: 'BUY' })], 'acciones');
     const { GET } = await import('@/app/api/decisions/[asset]/narrative/route');
 
     const response = await GET(
@@ -463,7 +504,7 @@ describe('GET /api/decisions/[asset]/narrative — market scoping (decision-narr
 
 describe('GET /api/decisions/[asset]/narrative — happy path', () => {
   it('streams forwarded text_delta content live and tags the response x-faf-narrative-source: llm', async () => {
-    primeReport([buildDecision({ recommendation: 'BUY' })]);
+    await primeReport([buildDecision({ recommendation: 'BUY' })]);
     vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
     streamMock.mockReturnValue(
       fakeAnthropicStream([
@@ -482,6 +523,25 @@ describe('GET /api/decisions/[asset]/narrative — happy path', () => {
     expect(response.headers.get('content-type')).toContain('text/plain');
     expect(text).toBe('Se recomienda comprar');
     expect(text).not.toContain('oculto');
-    expect(narrativeCache.get(ASSET, T)).toBe('Se recomienda comprar');
+    await expect(narrativeCache.get(ASSET, T)).resolves.toBe('Se recomienda comprar');
+  });
+
+  it('a narrativeCache.put write failure is silently swallowed — the route still returns a 200 stream, no unhandled rejection (design.md: narrative cache is cost-mitigation only, put never throws to caller)', async () => {
+    await primeReport([buildDecision({ recommendation: 'BUY' })]);
+    vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
+    streamMock.mockReturnValue(textDeltaStream(['Hola ', 'mundo']));
+    vi.spyOn(fakeRedis, 'set').mockRejectedValueOnce(new Error('simulated Redis write failure'));
+    const { GET } = await import('@/app/api/decisions/[asset]/narrative/route');
+
+    const response = await GET(makeRequest(), paramsFor(ASSET));
+    const text = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('x-faf-narrative-source')).toBe('llm');
+    expect(text).toBe('Hola mundo');
+    // The failed write never reached the fake store, so a subsequent read
+    // is a genuine miss — no partial/corrupt entry was persisted, and
+    // nothing propagated as an unhandled rejection back through the route.
+    await expect(narrativeCache.get(ASSET, T)).resolves.toBeNull();
   });
 });

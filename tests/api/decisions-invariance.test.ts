@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeRedis } from '@/tests/helpers/fakeRedis';
 import * as cache from '@/src/cycle/latest';
 import { buildReport, seedCycleCache } from '../helpers/seedCycleCache';
+
+// presentation-cache-persistence design.md's "Test double" decision: mock
+// the low-level Redis client, not the module under test.
+vi.mock('@/src/lib/redis', () => ({ getRedis: () => fakeRedis }));
 
 // D7 clause 4 (design.md, proposal.md Deviation D7): "Narrative absence
 // never changes a decision: GET /api/decisions output is byte-identical
@@ -11,13 +16,14 @@ import { buildReport, seedCycleCache } from '../helpers/seedCycleCache';
 // paths, since push-only ingestion (dynamic-asset-count) makes 503 a real,
 // reachable steady state, not just a startup transient.
 
-beforeEach(() => {
-  cache.clear();
+beforeEach(async () => {
+  fakeRedis.__reset();
+  await cache.clear();
   delete process.env.ANTHROPIC_API_KEY;
 });
 
-afterEach(() => {
-  cache.clear();
+afterEach(async () => {
+  await cache.clear();
   vi.unstubAllEnvs();
   delete process.env.ANTHROPIC_API_KEY;
 });
@@ -31,12 +37,12 @@ describe('GET /api/decisions — D7 clause 4 invariance', () => {
     const { GET } = await import('@/app/api/decisions/route');
 
     delete process.env.ANTHROPIC_API_KEY;
-    cache.clear();
+    await cache.clear();
     const withoutKeyResponse = await GET(makeGetRequest());
     const withoutKeyBody = await withoutKeyResponse.text();
 
     process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
-    cache.clear();
+    await cache.clear();
     const withKeyResponse = await GET(makeGetRequest());
     const withKeyBody = await withKeyResponse.text();
 
@@ -50,13 +56,13 @@ describe('GET /api/decisions — D7 clause 4 invariance', () => {
     const report = buildReport();
 
     delete process.env.ANTHROPIC_API_KEY;
-    cache.clear();
-    seedCycleCache(report, 'crypto');
+    await cache.clear();
+    await seedCycleCache(report, 'crypto');
     const withoutKeyBody = await (await GET(makeGetRequest())).text();
 
     process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
-    cache.clear();
-    seedCycleCache(report, 'crypto');
+    await cache.clear();
+    await seedCycleCache(report, 'crypto');
     const withKeyBody = await (await GET(makeGetRequest())).text();
 
     expect(withKeyBody).toBe(withoutKeyBody);

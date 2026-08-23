@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeRedis } from '@/tests/helpers/fakeRedis';
 import * as cache from '@/src/cycle/latest';
 import { buildDecision, buildReport, seedCycleCache } from '../helpers/seedCycleCache';
 
@@ -8,14 +9,23 @@ import { buildDecision, buildReport, seedCycleCache } from '../helpers/seedCycle
 // (including an expired entry) is a defined 503, never a recompute. A
 // never-called `fetch` spy on every case proves the push-only invariant
 // behaviorally, alongside tests/api/pushOnly.test.ts's structural guard.
+//
+// presentation-cache-persistence design.md's "Test double" decision: mock
+// the low-level Redis client (`@/src/lib/redis`), not the module under
+// test, so `src/cycle/latest.ts`'s real key scheme/error-handling stays
+// genuinely exercised through this route.
+vi.mock('@/src/lib/redis', () => ({ getRedis: () => fakeRedis }));
 
-beforeEach(() => {
-  cache.clear();
+beforeEach(async () => {
+  fakeRedis.__reset();
+  await cache.clear();
 });
 
-afterEach(() => {
-  cache.clear();
+afterEach(async () => {
+  await cache.clear();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 function makeGetRequest(market?: string): Request {
@@ -29,7 +39,7 @@ describe('GET /api/decisions', () => {
     vi.stubGlobal('fetch', fetchSpy);
 
     const report = buildReport();
-    seedCycleCache(report, 'crypto');
+    await seedCycleCache(report, 'crypto');
     const { GET } = await import('@/app/api/decisions/route');
 
     const response = await GET(makeGetRequest('crypto'));
@@ -60,8 +70,13 @@ describe('GET /api/decisions', () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
 
-    seedCycleCache(buildReport(), 'crypto', 1);
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    // design.md "TTL granularity": TTL is now Redis-native EX (second
+    // precision, ceil(ttlMs / 1000)), so sub-second boundaries must move to
+    // Vitest fake timers rather than a real `setTimeout` wait.
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    await seedCycleCache(buildReport(), 'crypto', 1_000);
+    vi.setSystemTime(1_000);
 
     const { GET } = await import('@/app/api/decisions/route');
 
@@ -97,11 +112,29 @@ describe('GET /api/decisions', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it('Redis read failure -> 503 NO_DATA (fail-open), never calling fetch (semantic-ingestion: Redis unreachable on read yields the existing no-data contract)', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+
+    await seedCycleCache(buildReport(), 'crypto');
+    vi.spyOn(fakeRedis, 'get').mockRejectedValueOnce(new Error('simulated Redis read failure'));
+
+    const { GET } = await import('@/app/api/decisions/route');
+
+    const response = await GET(makeGetRequest('crypto'));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toEqual({ error: 'Service temporarily unavailable', code: 'NO_DATA' });
+    expect(response.headers.get('Retry-After')).toBe('30');
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it('acciones-scoped read never returns a crypto decision — reads its own market only', async () => {
     const cryptoReport = buildReport();
     const accionesReport = buildReport([buildDecision({ asset: 'AAPL', market: 'acciones' })], 'acciones');
-    seedCycleCache(cryptoReport, 'crypto');
-    seedCycleCache(accionesReport, 'acciones');
+    await seedCycleCache(cryptoReport, 'crypto');
+    await seedCycleCache(accionesReport, 'acciones');
     const { GET } = await import('@/app/api/decisions/route');
 
     const response = await GET(makeGetRequest('acciones'));

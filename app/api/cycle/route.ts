@@ -141,6 +141,16 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const report = runCycle(parsed.assets);
-  cache.put(report.market, report, BETA_MS);
+
+  // design.md "Write failure handling": this cache has no fallback store,
+  // so a silently-lost write means the report is durably nowhere.
+  // Returning 200 anyway would give n8n a false-positive success — cache.put
+  // does NOT catch its own errors (src/cycle/latest.ts), so this route must.
+  try {
+    await cache.put(report.market, report, BETA_MS);
+  } catch {
+    return Response.json({ error: 'Failed to persist cycle result', code: 'CACHE_WRITE_FAILED' }, { status: 502 });
+  }
+
   return Response.json(report, { status: 200 });
 }

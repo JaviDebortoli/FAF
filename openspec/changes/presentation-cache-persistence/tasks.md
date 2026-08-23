@@ -47,15 +47,15 @@ Chain strategy: stacked-to-main
 
 ## Phase D: Route Wiring + Remaining Test Updates (PR4)
 
-- [ ] D.1 RED `tests/api/decisions.test.ts` + `tests/api/decisions-invariance.test.ts`: switch every `seedCycleCache(...)` call to `await`; add a fail-open scenario — `fakeRedis.get` mocked to throw still yields `503 NO_DATA` unchanged.
-- [ ] D.2 GREEN `app/api/decisions/route.ts`: `const cached = await cache.get(market);` (fail-open behavior already lives inside `latest.ts` from Phase B, no new branch needed here).
-- [ ] D.3 RED extend `tests/api/cycle.test.ts`: a Redis write failure on `cache.put` (mocked `fakeRedis.set` rejection) yields `502` with `{ error, code: 'CACHE_WRITE_FAILED' }`; existing success-path assertions stay green.
-- [ ] D.4 GREEN `app/api/cycle/route.ts`: wrap the cache write — `try { await cache.put(report.market, report, BETA_MS); } catch { return Response.json({ error: 'Failed to persist cycle result', code: 'CACHE_WRITE_FAILED' }, { status: 502 }); }`.
-- [ ] D.5 GREEN `tests/helpers/seedCycleCache.ts`: `seedCycleCache` becomes `async`, `await cycleCache.put(market, report, ttlMs)`.
-- [ ] D.6 RED `tests/api/narrative.test.ts`: `await` every `cycleCache.getForAsset`/`narrativeCache.get` interaction through the fake; add a fail-open scenario for `cycleCache.getForAsset` throwing (still `404 NO_DECISION`, not a 500); add a scenario confirming a `narrativeCache.put` write failure is silently swallowed (route still returns a `200` stream, no unhandled rejection).
-- [ ] D.7 GREEN `app/api/decisions/[asset]/narrative/route.ts`: `await cycleCache.getForAsset(market, asset)`; `const cached = await narrativeCache.get(asset, decision.t);`; inside `buildNarrativeStream`'s `onDone` callback, change the cache write to fire-and-forget `narrativeCache.put(asset, decision.t, fullText).catch(() => {})`.
-- [ ] D.8 RED+GREEN `tests/cycle/idempotency.test.ts`: `await` every cache seed/read call in this file (flows through D.5's now-async `seedCycleCache`/Phase B's async `cycleCache.get`); no separate production code change expected beyond D.5/B.2.
-- [ ] D.9 Verify GREEN: `npx vitest run tests/api/decisions.test.ts tests/api/decisions-invariance.test.ts tests/api/narrative.test.ts tests/api/cycle.test.ts tests/cycle/idempotency.test.ts` + `npx tsc --noEmit` (zero errors across the full stack now that A-D are all converted).
+- [x] D.1 RED `tests/api/decisions.test.ts` + `tests/api/decisions-invariance.test.ts`: switch every `seedCycleCache(...)` call to `await`; add a fail-open scenario — `fakeRedis.get` mocked to throw still yields `503 NO_DATA` unchanged.
+- [x] D.2 GREEN `app/api/decisions/route.ts`: `const cached = await cache.get(market);` (fail-open behavior already lives inside `latest.ts` from Phase B, no new branch needed here).
+- [x] D.3 RED extend `tests/api/cycle.test.ts`: a Redis write failure on `cache.put` (mocked `fakeRedis.set` rejection) yields `502` with `{ error, code: 'CACHE_WRITE_FAILED' }`; existing success-path assertions stay green.
+- [x] D.4 GREEN `app/api/cycle/route.ts`: wrap the cache write — `try { await cache.put(report.market, report, BETA_MS); } catch { return Response.json({ error: 'Failed to persist cycle result', code: 'CACHE_WRITE_FAILED' }, { status: 502 }); }`.
+- [x] D.5 GREEN `tests/helpers/seedCycleCache.ts`: `seedCycleCache` becomes `async`, `await cycleCache.put(market, report, ttlMs)`.
+- [x] D.6 RED `tests/api/narrative.test.ts`: `await` every `cycleCache.getForAsset`/`narrativeCache.get` interaction through the fake; add a fail-open scenario for `cycleCache.getForAsset` throwing (still `404 NO_DECISION`, not a 500); add a scenario confirming a `narrativeCache.put` write failure is silently swallowed (route still returns a `200` stream, no unhandled rejection).
+- [x] D.7 GREEN `app/api/decisions/[asset]/narrative/route.ts`: `await cycleCache.getForAsset(market, asset)`; `const cached = await narrativeCache.get(asset, decision.t);`; the cache write stays a bare, unawaited `narrativeCache.put(asset, decision.t, fullText)` — no `.catch(() => {})` needed (Phase C's `put` never throws to its caller).
+- [x] D.8 RED+GREEN `tests/cycle/idempotency.test.ts`: audited — this file never calls `seedCycleCache`/`cycleCache.*` directly (only `runCycle`), so no `await` insertions or production code changes were needed here beyond D.5/B.2.
+- [x] D.9 Verify GREEN: `npx vitest run tests/api/decisions.test.ts tests/api/decisions-invariance.test.ts tests/api/narrative.test.ts tests/api/cycle.test.ts tests/cycle/idempotency.test.ts` + `npx tsc --noEmit` (zero errors across the full stack now that A-D are all converted).
 
 ## Phase E: Final Full-Suite Verification + Manual Gate
 
