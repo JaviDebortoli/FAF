@@ -59,9 +59,9 @@ Chain strategy: stacked-to-main
 
 ## Phase E: Final Full-Suite Verification + Manual Gate
 
-- [ ] E.1 Run `npx vitest run` + `npx tsc --noEmit` + `npx playwright test` — all green across the full 4-PR stack.
-- [ ] E.2 Confirm `src/domain/`, `src/decision/policy.ts`, `src/stream/`, `src/laf/`, `n8n/` have zero diff vs. pre-PR1 baseline (`git diff <base> --stat` across those paths, empty output) — this change touches only the 2 cache modules, 3 routes, 1 test helper, and their tests.
-- [ ] E.3 Self-check spec scenarios: `semantic-ingestion`'s "Market-keyed presentation cache" (5 scenarios: acciones-doesn't-affect-crypto, crypto-doesn't-affect-acciones, cross-instance visibility, Redis-unreachable-yields-503, TTL-native-expiry) and `decision-narrative`'s "Cost-mitigation caching" (3 scenarios: repeated-open-reuses-cache, new-decision-invalidates-cache, cross-instance narrative hit) each map to a passing test from Phases B-D.
+- [x] E.1 Run `npx vitest run` + `npx tsc --noEmit` + `npx playwright test` — all green across the full 4-PR stack.
+- [x] E.2 Confirm `src/domain/`, `src/decision/policy.ts`, `src/stream/`, `src/laf/`, `n8n/` have zero diff vs. pre-PR1 baseline (`git diff <base> --stat` across those paths, empty output) — this change touches only the 2 cache modules, 3 routes, 1 test helper, and their tests.
+- [x] E.3 Self-check spec scenarios: `semantic-ingestion`'s "Market-keyed presentation cache" (5 scenarios: acciones-doesn't-affect-crypto, crypto-doesn't-affect-acciones, cross-instance visibility, Redis-unreachable-yields-503, TTL-native-expiry) and `decision-narrative`'s "Cost-mitigation caching" (3 scenarios: repeated-open-reuses-cache, new-decision-invalidates-cache, cross-instance narrative hit) each map to a passing test from Phases B-D.
 - [ ] E.4 `[MANUAL-VERIFICATION-ONLY]` User provisions "Upstash for Redis" via Vercel Marketplace or a direct Upstash account.
 - [ ] E.5 `[MANUAL-VERIFICATION-ONLY]` User adds `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` to the Vercel project's environment variables.
 - [ ] E.6 `[MANUAL-VERIFICATION-ONLY]` User redeploys.
@@ -74,3 +74,31 @@ Chain strategy: stacked-to-main
 ## Implementation Order
 
 Phase A -> Phase B -> Phase C -> Phase D -> Phase E. Phase A is the hard foundation — nothing else can `vi.mock('@/src/lib/redis', ...)` without the fake existing first. Phase B and Phase C are independent of each other (different files, no shared code beyond `src/lib/redis.ts`) and may be sequenced in either order, but both must land before Phase D, since Phase D's route/test changes depend on both cache modules already being async. Phase E runs only after all 4 PRs merge, and closes with the `[MANUAL-VERIFICATION-ONLY]` gate — the only proof this change actually fixes the production bug.
+
+## Phase F — Remediation (2026-08-23)
+
+First live production test on 2026-08-23: deterministic `503` on both markets, n8n writes green. Root cause (design.md "Remediation Phase F", orchestrator-verified): `@upstash/redis` defaults `automaticDeserialization: true`, so `get()` returns a PARSED object; `src/cycle/latest.ts`'s `JSON.parse(raw)` then throws `SyntaxError`, swallowed by the fail-open `catch` → `null` → `503 NO_DATA`. Invisible locally because `fakeRedis` returns values verbatim and `getRedis()` is `vi.mock`'d in every test. Phases A–E above are historical record — this section is the only operative plan.
+
+### Phase F Review Workload Forecast
+
+| Field | Value |
+|---|---|
+| Estimated changed lines | ~40-60 (1 new guard test file, 1 constructor option, 2 doc comments) |
+| Session review budget | 800 lines |
+| Budget risk | Low |
+| Chained PRs recommended | No |
+| Delivery strategy | single-pr |
+
+Decision needed before apply: No
+Chained PRs recommended: No
+Chain strategy: pending
+400-line budget risk: Low
+
+Strict TDD Mode ACTIVE — RED → GREEN. Runner: `npx vitest run && npx playwright test`.
+
+- [x] F.1 RED: create `tests/lib/redis.test.ts` — `vi.mock('@upstash/redis')` with a `Redis` constructor spy; import the REAL `src/lib/redis.ts` (the ONLY test that must NOT use the `vi.mock('@/src/lib/redis')` pattern); set the env vars, call `getRedis()`, assert the constructor received an options object with `automaticDeserialization: false`. Confirm it FAILS against current code (option absent).
+- [x] F.2 GREEN: `src/lib/redis.ts` — pass `automaticDeserialization: false` in `new Redis({ url, token, ... })`; update the module doc comment to record why (SDK-default auto-deserialization → double-parse → swallowed `SyntaxError` → 503; design.md "Remediation Phase F").
+- [x] F.3 Doc: `tests/helpers/fakeRedis.ts` — doc-comment-only edit recording that it models the client AS CONFIGURED with `automaticDeserialization: false`; verbatim-value semantics are faithful ONLY under that configuration.
+- [x] F.4 Verify full-suite GREEN: `npx vitest run && npx playwright test` — all pre-existing tests pass UNCHANGED (fake behavior does not change), plus the new F.1 guard; `npx tsc --noEmit` clean.
+
+**Out of scope (recorded, not implemented):** the narrative-cache latent hazard (`src/narrative/cache.ts`'s `get()` has no `JSON.parse` chain — inert under `automaticDeserialization: false`; documented in design.md, deliberately not fixed). The Phase E manual gate E.4–E.7 stays user-owned and is re-attempted AFTER this fix deploys.

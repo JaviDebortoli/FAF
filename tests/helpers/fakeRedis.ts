@@ -15,6 +15,17 @@
  * with `vi.useFakeTimers()`/`vi.setSystemTime()` — advancing fake time past
  * an entry's expiry makes it invisible on the next `get`/`set` without any
  * background timer.
+ *
+ * CONFIGURATION FIDELITY (design.md "Remediation Phase F", 2026-08-23):
+ * this fake models the client AS CONFIGURED by `getRedis()` with
+ * `automaticDeserialization: false` — `get()` returns stored values
+ * verbatim, exactly like the SDK with deserialization disabled. Those
+ * verbatim-value semantics are faithful ONLY under that configuration; the
+ * SDK's default (`automaticDeserialization: true`) auto-parses JSON-looking
+ * values into objects, a fidelity gap that hid the 2026-08-23 production
+ * double-parse outage from the entire local suite. The guard test
+ * `tests/lib/redis.test.ts` pins the real client's construction options so
+ * this fake can never silently drift from production again.
  */
 
 interface Entry {

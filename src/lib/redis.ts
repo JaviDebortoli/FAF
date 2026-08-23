@@ -28,6 +28,18 @@ import { Redis } from '@upstash/redis';
  * The REST client (not `ioredis`'s pooled TCP client) is the deliberate
  * choice for this serverless/Fluid Compute execution model — see
  * design.md's "Redis client type" decision.
+ *
+ * `automaticDeserialization: false` is MANDATORY, not cosmetic
+ * (design.md "Remediation Phase F", 2026-08-23): the SDK defaults it to
+ * `true`, which makes `get()` auto-parse JSON-looking values and return the
+ * parsed OBJECT. `src/cycle/latest.ts` then runs `JSON.parse(raw)` on that
+ * object, throwing a `SyntaxError` that the deliberate fail-open `catch`
+ * swallows into `null` -> deterministic `503 NO_DATA` on every read while
+ * writes stay green — the exact chain behind the 2026-08-23 production
+ * outage. Disabling it keeps the explicit `JSON.stringify`/`JSON.parse`
+ * contract in the cache modules and makes production behavior exactly match
+ * `tests/helpers/fakeRedis.ts`'s verbatim-value semantics; the guard test
+ * `tests/lib/redis.test.ts` pins this option.
  */
 function envUrl(): string | undefined {
   return process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || process.env.UPTASH_FOR_REDIS_KV_REST_API_URL;
@@ -48,7 +60,7 @@ export function getRedis(): Redis {
     if (!url || !token) {
       throw new Error('[Redis] Missing REST URL/token — no known env var naming convention matched.');
     }
-    client = new Redis({ url, token });
+    client = new Redis({ url, token, automaticDeserialization: false });
   }
   return client;
 }

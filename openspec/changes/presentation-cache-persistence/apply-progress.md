@@ -344,3 +344,149 @@ No behavioral contract from design.md's Interfaces/Contracts, Architecture Decis
 ## Status
 
 9/9 Phase D tasks complete (21/26 total tasks across all code phases: A's 6 + B's 3 + C's 3 + D's 9 — Phase E's 7 tasks are the only remainder, and E.4–E.7 are explicitly `[MANUAL-VERIFICATION-ONLY]`, not agent-executable). **`npx tsc --noEmit` is fully clean (0 errors) and `npx vitest run` is fully green (42/42 files, 293/293 tests)** — the entire 4-PR A→D stack is now internally consistent for the first time since Phase A. `npx playwright test` also fully green (53/53). Ready for `sdd-verify`. Not committed/pushed — orchestrator holds the commit and the full A→D push per the chained-delivery/production-safety plan; this phase's diff is scoped exactly to Unit 4's rollback boundary above and is independently revertible without touching A/B/C's already-committed work.
+
+---
+
+# Phase F — Remediation (2026-08-23): Redis Client Construction-Options Fix (single PR)
+
+## Mode
+
+Strict TDD Mode: active (tasks.md "Phase F" section, line 97). Genuine RED→GREEN behavior change on the exact line that failed in production (`new Redis({ url, token })` → `new Redis({ url, token, automaticDeserialization: false })`) — full TDD cycle followed with an observed, recorded RED before the fix landed.
+
+## Context (why this phase exists)
+
+First live production test of the deployed A→D stack on 2026-08-23: deterministic `503 Servicio no Disponible` on BOTH markets while n8n writes stayed fully green. Root cause (orchestrator-verified, design.md "Remediation Phase F"): `@upstash/redis` defaults `automaticDeserialization: true`, so `get()` returned the PARSED object; `src/cycle/latest.ts`'s `JSON.parse(raw)` then threw `SyntaxError`, swallowed by the deliberate fail-open `catch` → `null` → `503 NO_DATA` on every read. Invisible locally because `tests/helpers/fakeRedis.ts` returns values verbatim (it never modeled SDK auto-deserialization) and `getRedis()` is `vi.mock`'d in every downstream test — a test-double fidelity gap, not a logic bug. Phases A–E above are historical record; this section is Phase F's operative record.
+
+## Completed Tasks (Phase F — all 4)
+
+- [x] F.1 RED: created `tests/lib/redis.test.ts` (48 lines, new) — `vi.mock('@upstash/redis')` (automock, constructor spy — the low-level-client mock pattern established by `tests/narrative/client.test.ts`'s `vi.mock('@anthropic-ai/sdk', ...)`), importing the REAL `src/lib/redis.ts` via dynamic `await import('@/src/lib/redis')` — the ONLY test in the repo that does NOT use `vi.mock('@/src/lib/redis', ...)`. Env vars (`UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`) set in `beforeEach` before the first `getRedis()` call and deleted in `afterEach`; `vi.resetModules()` per test keeps the module-scope `client` singleton isolated. Asserts `Redis` was called exactly once with `expect.objectContaining({ url, token, automaticDeserialization: false })`. **RED observed and recorded**: `npx vitest run tests/lib/redis.test.ts` → 1 failed — `AssertionError: expected "_Redis" to be called with arguments: [ ObjectContaining{…} ]`; received `Object { "token": "fake-token", "url": "https://fake.upstash.io" }` — the option absent, exactly the production defect. Right failure for the right reason (missing construction option, not an infrastructure/typo failure).
+- [x] F.2 GREEN: `src/lib/redis.ts` — `client = new Redis({ url, token, automaticDeserialization: false });` (the only code-line change); module doc comment extended with the why (SDK-default auto-deserialization → `get()` returns parsed object → `latest.ts` double-parse → swallowed `SyntaxError` → deterministic 503; keeps the explicit `JSON.stringify`/`JSON.parse` contract in the cache modules and makes production exactly match the fake; references design.md "Remediation Phase F" and the guard test). Re-ran `npx vitest run tests/lib/redis.test.ts` → **1/1 passed** (GREEN observed).
+- [x] F.3 Doc: `tests/helpers/fakeRedis.ts` — doc-comment-only edit (+11 lines, zero behavior change): records that the fake models the client AS CONFIGURED with `automaticDeserialization: false`, that its verbatim-value semantics are faithful ONLY under that configuration, that the SDK default is what hid the 2026-08-23 double-parse outage from the local suite, and that `tests/lib/redis.test.ts` pins the real client's construction options so the fake can never silently drift from production again.
+- [x] F.4 Gate: full suite re-run — `npx vitest run` → **43 files / 294 tests, ALL PASSED** (293 pre-existing unchanged + 1 new F.1 guard; cumulative arithmetic 293 + 1 = 294 exact). `npx playwright test` → **53/53 passed** (1 chromium project, ~1.8 min). `npx tsc --noEmit` → **exit 0, 0 errors, fully clean**.
+
+## Files Changed (Phase F)
+
+| File | Action | What Was Done |
+|---|---|---|
+| `tests/lib/redis.test.ts` | Created | Construction-options guard: automocked `@upstash/redis` constructor spy asserts `automaticDeserialization: false` (+ url/token) is passed by the REAL `getRedis()`; the only test exercising the real construction line. |
+| `src/lib/redis.ts` | Modified | `new Redis({ url, token, automaticDeserialization: false })`; module doc comment extended with the outage root-cause chain and the design.md reference. |
+| `tests/helpers/fakeRedis.ts` | Modified (doc comment only) | Records the fake models the client as configured with `automaticDeserialization: false`; verbatim semantics faithful only under that configuration. |
+| `openspec/changes/presentation-cache-persistence/tasks.md` | Modified | Marked F.1–F.4 `[x]`. |
+| `openspec/changes/presentation-cache-persistence/apply-progress.md` | Modified | Appended this Phase F section (Phases A–E sections preserved unchanged). |
+
+## TDD Cycle Evidence
+
+| Task | Test File | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|---|
+| F.1/F.2 `src/lib/redis.ts` construction options | `tests/lib/redis.test.ts` | Unit — construction guard | ✅ Full pre-change suite green at phase start (42 files / 293 tests, Phase D's final state) | ✅ Written first and OBSERVED failing: constructor received `{ url, token }` with `automaticDeserialization` absent — `AssertionError` diff shows `ObjectContaining{ "automaticDeserialization": false, ... }` expected vs `Object { token, url }` received | ✅ 1/1 passed after the one-line constructor fix | ✅ Assertion uses `expect.objectContaining` pinning all three options (url source, token source, deserialization) — the guard covers the whole construction config, not just the one regression option; `toHaveBeenCalledTimes(1)` also pins lazy-singleton single-construction behavior | ✅ Module doc comment updated (the why, the outage chain, the design.md reference); no further refactor — change is a single constructor option |
+
+### Test Summary
+- **Total tests written this phase**: 1 (`tests/lib/redis.test.ts`)
+- **Total tests passing**: 1/1 (294/294 full suite)
+- **Layers used**: Unit — construction guard (design.md Testing Strategy's `[Rem. F]` row)
+- **Approval tests** (refactoring): None
+- **Pure functions created**: 0
+
+## Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and exact result | `npx vitest run tests/lib/redis.test.ts` → RED: 1 failed (option absent); GREEN: 1/1 passed after F.2 |
+| Runtime harness command/scenario and exact result | N/A for real Upstash (the Phase E manual gate E.4–E.7 stays user-owned and is re-attempted after this fix deploys — the live cross-instance read is the only true proof, per design.md). Closest available harnesses run and green: `npx tsc --noEmit` exit 0; `npx playwright test` 53/53 (e2e boundary, unaffected by this backend-only change, re-run as independent confirmation). |
+| Rollback boundary | Revert `tests/lib/redis.test.ts`, `src/lib/redis.ts`, `tests/helpers/fakeRedis.ts` (3 files, ~73 changed lines total: 48 new + 14 + 11). Zero coupling to any other module — nothing imports `tests/lib/redis.test.ts`, and the `src/lib/redis.ts` diff is confined to the constructor call + doc comment. Reverting returns the project to the exact post-Phase-D committed state. |
+
+## Full-Suite Regression Check
+
+- `npx vitest run`: **43 files / 294 tests, ALL PASSED** (was 42 files / 293 tests post-Phase-D; the +1 file / +1 test is exactly F.1's guard). No pre-existing test was modified in any way — fake behavior is unchanged (verbatim semantics now match the real client's configuration, by construction).
+- `npx playwright test`: **53/53 passed**, unchanged.
+- `npx tsc --noEmit`: **0 errors, fully clean, project-wide.**
+- Scope check: Phase F touched only `src/lib/redis.ts` (1 code line + doc), `tests/helpers/fakeRedis.ts` (doc only), the new `tests/lib/redis.test.ts`, and this change's own openspec artifacts. Zero diff in any other `src/`, `app/`, or `tests/` module.
+
+## Deviations from Design
+
+None — implementation matches design.md "Remediation Phase F"'s Fix/Regression-net/Fake-documentation decisions exactly (single constructor option, guard test via `@upstash/redis` automock, doc-only fake edit). The `expect.objectContaining` assertion additionally pins `url`/`token` provenance, which is a superset of the required assertion, not a deviation.
+
+## Issues Found
+
+1. None in the code. One process note: while persisting this section, an intermediate edit to this file briefly overwrote Phase D's "## Status" paragraph; it was immediately restored verbatim from the pre-edit content and confirmed intact before this section was appended. No other phase's content was touched.
+
+## Remaining Tasks
+
+- [ ] Phase E manual gate E.4–E.7 (`[MANUAL-VERIFICATION-ONLY]`, user-owned) — re-attempted AFTER this fix deploys; E.7's live multi-load check is the actual proof the production bug (and its remediation) is resolved.
+- [ ] Orchestrator-owned: re-run `sdd-verify` for the remediated state, then archive. The prior verify report (2026-08-23, verdict: fail, 2 blockers) is superseded by this remediation pending re-verification.
+
+## Workload / PR Boundary
+
+- Mode: single PR (tasks.md Phase F forecast: ~40–60 estimated changed lines, budget risk Low, chained PRs not recommended)
+- Current work unit: `phase-f-remediation` (native runtime token `sha256:f131e8b6…`, max 100 changed lines)
+- Boundary: exactly the 3 code/test files above + this change's openspec artifacts; starts from the committed post-Phase-D baseline, ends with the construction fix + guard test + fake documentation
+- Actual changed lines: **73 implementation lines** (48 new test + 14 `src/lib/redis.ts` + 11 `fakeRedis.ts` doc) + 8 tasks.md checkbox lines + this apply-progress section — implementation well under the 100-line budget
+
+## Status
+
+4/4 Phase F tasks complete. The remediation fixes the exact production root cause (deterministic 503 on both markets via SDK-default auto-deserialization double-parse), adds a permanent construction-options guard test so the class of bug cannot recur silently, and leaves the full suite green (vitest 294/294, playwright 53/53, tsc 0 errors). NOT committed/pushed — orchestrator owns delivery. Ready for orchestrator re-verification (`sdd-verify`) and then `sdd-archive`; Phase E's manual gate (E.4–E.7) remains user-owned post-deploy.
+
+---
+
+# Phase E — Automated Gates (2026-08-23)
+
+Phase E tasks E.1–E.3 were independently re-run after Phase F. No production or test code was modified; this subsection records gate evidence only. E.4–E.7 remain explicitly user-owned manual gates.
+
+## Completed Tasks
+
+- [x] E.1 Full automated suite: `npx vitest run` exit 0 — 43 files / 294 tests passed; `npx tsc --noEmit` exit 0 — 0 errors; `npx playwright test` exit 0 — 53/53 passed. Independent Phase F guard: `npx vitest run tests/lib/redis.test.ts` exit 0 — 1 file / 1 test passed.
+- [x] E.2 Zero-diff reasoning-core check against the recorded pre-Phase-A baseline `1e2b9eebc74984178d2e03807cd9c0f4e34936a9`: `git diff --name-status 1e2b9ee -- src/domain/ src/decision/policy.ts src/stream/ src/laf/ n8n/` exit 0 with empty output (`RESULT: empty diff (zero paths changed)`).
+- [x] E.3 Scenario mapping completed below. Six scenarios are locally proven by passing automated tests; both cross-instance scenarios remain unprovable locally and are reserved for E.7 live proof.
+
+## Automated Gate Evidence
+
+| Check | Exact command/result |
+|---|---|
+| Vitest | `npx vitest run` → exit 0; 43/43 files, 294/294 tests passed |
+| TypeScript | `npx tsc --noEmit` → exit 0; 0 errors |
+| Playwright | `npx playwright test` → exit 0; 53/53 passed, 1 Chromium project, 1 worker |
+| Phase F guard | `npx vitest run tests/lib/redis.test.ts` → exit 0; 1/1 file, 1/1 test passed |
+| Reasoning-core diff | `git diff --name-status 1e2b9ee -- src/domain/ src/decision/policy.ts src/stream/ src/laf/ n8n/` → exit 0; empty output |
+
+## E.3 Scenario Mapping
+
+| Spec scenario | Passing evidence | Status |
+|---|---|---|
+| Acciones push does not affect crypto cache | `tests/cycle/latest.test.ts` — “an acciones push does not affect the crypto cache entry” | Locally proven |
+| Crypto push does not affect acciones cache | `tests/cycle/latest.test.ts` — “a crypto push does not affect the acciones cache entry” | Locally proven |
+| Cycle write visible to a different instance | No local single-process test can prove independent serverless-instance visibility; Redis-backed design is source evidence only | **Not locally provable; E.7 required** |
+| Redis read failure yields `503 NO_DATA` | `tests/api/decisions.test.ts` — “Redis read failure -> 503 NO_DATA (fail-open)” plus cycle-cache fail-open tests | Locally proven |
+| Store-native TTL expiry | `tests/cycle/latest.test.ts` native-`EX` expiry test plus `tests/api/decisions.test.ts` fake-timer expiry test | Locally proven |
+| Repeated narrative open reuses cache | `tests/api/narrative.test.ts` — “repeated request for the same (asset, decision.t) -> cache hit, exactly ONE upstream call total” | Locally proven |
+| New decision invalidates narrative cache | `tests/narrative/cache.test.ts` — “a new decision.t for the same asset is a MISS” | Locally proven |
+| Cached narrative hit visible across instances | No local single-process test can prove independent serverless-instance visibility; Redis-backed design is source evidence only | **Not locally provable; E.7 required** |
+
+## TDD Cycle Evidence
+
+Verification-only work unit; no RED test, production implementation, test implementation, or refactor was required.
+
+| Task | Safety Net | RED | GREEN / evidence | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|
+| E.1 | N/A — no code edited | N/A — gate execution | ✅ Full suite and independent guard passed | ✅ Guard run independently from full suite | N/A |
+| E.2 | N/A — read-only Git check | N/A — no behavior change | ✅ Baseline diff empty | ✅ All five protected path groups checked | N/A |
+| E.3 | N/A — evidence mapping | N/A — no test authored | ✅ 6 local / 2 manual-only scenarios classified honestly | ✅ Both cross-instance cases explicitly withheld from local proof | N/A |
+
+## Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and exact result | Full automated gate commands above; all exit 0. Independent guard: 1/1 passed. |
+| Runtime harness command/scenario and exact result | N/A for cross-instance Redis visibility; local Playwright is green but does not exercise two live Vercel instances. E.4–E.7 are the user-owned runtime gate, with E.7 required for the two cross-instance scenarios. |
+| Rollback boundary | Revert only the E.1–E.3 checkbox changes in `tasks.md` and this appended Phase E evidence section in `apply-progress.md`; no `src/`, `app/`, or `tests/` code changed. |
+| Changed-line count | 68 authored changed lines for this unit: 62 appended evidence lines plus 6 lines for the three checkbox replacements; below the 200-line cap. |
+
+## Remaining Tasks
+
+- [ ] E.4 `[MANUAL-VERIFICATION-ONLY]` User provisions Upstash for Redis.
+- [ ] E.5 `[MANUAL-VERIFICATION-ONLY]` User adds the Redis env vars to Vercel.
+- [ ] E.6 `[MANUAL-VERIFICATION-ONLY]` User redeploys.
+- [ ] E.7 `[MANUAL-VERIFICATION-ONLY]` User confirms live multi-instance visibility after one n8n push; this is the actual proof for both cross-instance scenarios.
+
+## Status
+
+3/3 automatable Phase E tasks complete. Phase F guard and all required local gates pass. E.4–E.7 remain pending and user-owned; do not claim the two cross-instance scenarios are locally proven.
