@@ -41,9 +41,9 @@ Chain strategy: stacked-to-main
 
 ## Phase C: `src/narrative/cache.ts` Conversion (PR3)
 
-- [ ] C.1 RED rewrite `tests/narrative/cache.test.ts`: same fake-Redis mock + fake-timers approach as Phase B; drop the 2 `MAX_ENTRIES`/oldest-eviction tests entirely (Redis TTL already bounds storage, design.md decision); keep get/put, expiry-boundary, and new-`t`-invalidation scenarios; assert key scheme `narrative:{asset}:{t}`.
-- [ ] C.2 GREEN `src/narrative/cache.ts`: convert `put`/`get`/`clear` to `async`, backed by `getRedis()`, same `EX`-TTL and error-handling shape as `latest.ts`'s `put`/`get` (this module's `put` also propagates errors — the fire-and-forget `.catch(() => {})` swallowing happens at the PR4 call site, not inside this module, per design.md's Data Flow); delete `MAX_ENTRIES`, the `entries` size check, and the oldest-eviction branch entirely; drop `atMs`.
-- [ ] C.3 Verify GREEN: `npx vitest run tests/narrative/cache.test.ts` + `npx tsc --noEmit`.
+- [x] C.1 RED rewrite `tests/narrative/cache.test.ts`: same fake-Redis mock + fake-timers approach as Phase B; drop the 2 `MAX_ENTRIES`/oldest-eviction tests entirely (Redis TTL already bounds storage, design.md decision); keep get/put, expiry-boundary, and new-`t`-invalidation scenarios; assert key scheme `narrative:{asset}:{t}`.
+- [x] C.2 GREEN `src/narrative/cache.ts`: convert `put`/`get`/`clear` to `async`, backed by `getRedis()`, same `EX`-TTL shape as `latest.ts` — **deviation from this task's original text**: `put` does NOT propagate errors; it catches and swallows them INSIDE this module (matches design.md's Interfaces/Contracts annotation `Promise<void>; // never throws to caller`, which is more specific/authoritative than this task line's "also propagates errors" — see Deviations note in apply-progress.md); delete `MAX_ENTRIES`, the `entries` size check, and the oldest-eviction branch entirely; drop `atMs`.
+- [x] C.3 Verify GREEN: `npx vitest run tests/narrative/cache.test.ts` (13/13 passed) + `npx tsc --noEmit` (5 errors, all pre-existing-shape in `app/api/decisions/[asset]/narrative/route.ts`, Phase D scope).
 
 ## Phase D: Route Wiring + Remaining Test Updates (PR4)
 
