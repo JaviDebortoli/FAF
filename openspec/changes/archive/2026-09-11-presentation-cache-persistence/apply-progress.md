@@ -490,3 +490,30 @@ Verification-only work unit; no RED test, production implementation, test implem
 ## Status
 
 3/3 automatable Phase E tasks complete. Phase F guard and all required local gates pass. E.4–E.7 remain pending and user-owned; do not claim the two cross-instance scenarios are locally proven.
+
+---
+
+# Phase E — Manual Gate Closure (2026-09-11)
+
+## Completed Tasks
+
+- [x] E.4 User-confirmed: "Upstash for Redis" provisioned in production.
+- [x] E.5 User-confirmed: `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` set on the Vercel project.
+- [x] E.6 User-confirmed: production redeployed with those variables and the Phase F fix (commit `33f3a20`, already pushed to `main`).
+- [x] E.7 User-confirmed, in direct response to the exact spec criterion re-asked verbatim ("¿confirmaste que el dashboard muestra datos consistentemente en múltiples cargas de página/instancias distintas después de un solo push de n8n, sin necesitar re-ejecutar n8n?"): **"Sí, confirmé eso exactamente en varias instancias."** This closes both previously-unprovable-locally cross-instance scenarios (cycle-cache cross-instance visibility, narrative-cache cross-instance hit).
+
+## Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and exact result | N/A — this unit is the manual production gate itself; no code or test changed. |
+| Runtime harness command/scenario and exact result | Live Vercel production, multiple page loads/instances, single n8n push, no re-run needed — user-attested 2026-09-11, matching E.7's exact wording. |
+| Rollback boundary | N/A — no code/test diff; only `tasks.md` checkboxes (E.4–E.7) and this section were updated. |
+
+## Remaining Tasks
+
+None. All 32 tasks across Phases A–F are now complete (28 automatable + 4 manual).
+
+## Status
+
+7/7 Phase E tasks complete (32/32 total tasks across all phases). Ready for `sdd-verify` against the remediated + manually-confirmed state, then `sdd-archive`.

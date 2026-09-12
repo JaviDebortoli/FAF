@@ -62,10 +62,10 @@ Chain strategy: stacked-to-main
 - [x] E.1 Run `npx vitest run` + `npx tsc --noEmit` + `npx playwright test` — all green across the full 4-PR stack.
 - [x] E.2 Confirm `src/domain/`, `src/decision/policy.ts`, `src/stream/`, `src/laf/`, `n8n/` have zero diff vs. pre-PR1 baseline (`git diff <base> --stat` across those paths, empty output) — this change touches only the 2 cache modules, 3 routes, 1 test helper, and their tests.
 - [x] E.3 Self-check spec scenarios: `semantic-ingestion`'s "Market-keyed presentation cache" (5 scenarios: acciones-doesn't-affect-crypto, crypto-doesn't-affect-acciones, cross-instance visibility, Redis-unreachable-yields-503, TTL-native-expiry) and `decision-narrative`'s "Cost-mitigation caching" (3 scenarios: repeated-open-reuses-cache, new-decision-invalidates-cache, cross-instance narrative hit) each map to a passing test from Phases B-D.
-- [ ] E.4 `[MANUAL-VERIFICATION-ONLY]` User provisions "Upstash for Redis" via Vercel Marketplace or a direct Upstash account.
-- [ ] E.5 `[MANUAL-VERIFICATION-ONLY]` User adds `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` to the Vercel project's environment variables.
-- [ ] E.6 `[MANUAL-VERIFICATION-ONLY]` User redeploys.
-- [ ] E.7 `[MANUAL-VERIFICATION-ONLY]` User confirms, on the live Vercel deployment, that the dashboard reliably shows data across multiple page loads/instances after a single n8n push, without needing to re-run n8n — this is the actual proof the production bug (intermittent "Servicio no disponible") is fixed, and cannot be established by local tests alone.
+- [x] E.4 `[MANUAL-VERIFICATION-ONLY]` User provisions "Upstash for Redis" via Vercel Marketplace or a direct Upstash account. Confirmed 2026-09-11.
+- [x] E.5 `[MANUAL-VERIFICATION-ONLY]` User adds `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` to the Vercel project's environment variables. Confirmed 2026-09-11.
+- [x] E.6 `[MANUAL-VERIFICATION-ONLY]` User redeploys. Confirmed 2026-09-11.
+- [x] E.7 `[MANUAL-VERIFICATION-ONLY]` User confirms, on the live Vercel deployment, that the dashboard reliably shows data across multiple page loads/instances after a single n8n push, without needing to re-run n8n — this is the actual proof the production bug (intermittent "Servicio no disponible") is fixed, and cannot be established by local tests alone. User-confirmed 2026-09-11 across multiple instances, matching the exact criterion (repeated page loads/instances after a single n8n push, no n8n re-run needed).
 
 ## Delivery Route Recommendation
 

@@ -77,7 +77,8 @@ If the Claude API call fails, times out, or `ANTHROPIC_API_KEY` is absent, this 
 - THEN the drill-down MUST NOT break, and the narrative section MUST show a "no disponible" state instead of blocking the graph or scores
 
 ### Requirement: Cost-mitigation caching
-The system MUST cache a generated narrative per `(asset, t)` for the current decision, valid within the same window the decision itself is cached (β, mirroring `src/cycle/latest.ts`'s put/get/ttl pattern), so repeated drill-down opens for the same decision instance MUST NOT re-invoke the Claude API.
+The system MUST cache a generated narrative per `(asset, t)` for the current decision in a durable, cross-instance-shared store (Redis-backed via `@upstash/redis`, mirroring `src/cycle/latest.ts`'s cache backend), valid within the same window the decision itself is cached (β). Entry expiry MUST be enforced via the store's native TTL mechanism (Redis `EX`) rather than app-level timestamp comparison. A cache write MUST be visible to a subsequent read for the same `(asset, t)` regardless of which serverless function instance serves either request, so repeated drill-down opens for the same decision instance MUST NOT re-invoke the Claude API even when the write and the read land on different instances.
+(Previously: cached in a process-local in-memory store with no durability or cross-instance-consistency guarantee, TTL enforced via app-level timestamp comparison.)
 
 #### Scenario: Repeated open reuses cached narrative
 - GIVEN a narrative was already generated for BTCUSDT's decision at time t within the current β window
@@ -89,6 +90,11 @@ The system MUST cache a generated narrative per `(asset, t)` for the current dec
 - WHEN the drill-down opens
 - THEN the endpoint MUST generate a fresh narrative rather than serving the stale cached one
 
+#### Scenario: Cached narrative hit is visible across instances
+- GIVEN a narrative was generated for BTCUSDT's decision at time t, handled by one serverless function instance
+- WHEN a subsequent drill-down request for BTCUSDT within the same β window is served by a different instance
+- THEN the cached narrative MUST be served
+- AND the Claude API MUST NOT be re-invoked
 ### Requirement: Narrative quality manual verification (Haiku 4.5 swap)
 
 Because the Tier 2 narrative model changed from Claude Opus 5 to Haiku 4.5
