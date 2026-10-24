@@ -35,3 +35,14 @@ coverage/
 # local agent tooling state (machine-specific paths, not project source)
 .atl/
 .codegraph/
+
+# agentic tools
+.agents/
+.claude/
+.idea/
+skills-lock.json
+design/
+
+# misc
+docs/
+images/
